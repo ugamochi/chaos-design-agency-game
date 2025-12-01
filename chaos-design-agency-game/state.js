@@ -1,6 +1,9 @@
 // State management and shared helpers
 
-const GameState = {
+const GameStateModule = (function() {
+    'use strict';
+
+    const GameState = {
     currentWeek: 1,
     currentDay: 1,
     currentHour: 9, // Start at 9 AM
@@ -30,29 +33,30 @@ const GameState = {
     },
     gamePhase: 'tutorial',
     gameOver: false,
-    victoryPath: null
+    victoryPath: null,
+    lastSalaryMonth: -1 // Track which month (week / 4) we last paid salaries (-1 means not paid yet)
 };
 
-let AllConversations = [];
-let AllTeamMembers = [];
-let AllProjectTemplates = [];
+    let AllConversations = [];
+    let AllTeamMembers = [];
+    let AllProjectTemplates = [];
 
-function setAllConversations(conversations = []) {
-    AllConversations = conversations;
-    window.AllConversations = AllConversations;
-}
+    function setAllConversations(conversations = []) {
+        AllConversations = conversations;
+        window.AllConversations = AllConversations;
+    }
 
-function setAllTeamMembers(members = []) {
-    AllTeamMembers = members;
-    window.AllTeamMembers = AllTeamMembers;
-}
+    function setAllTeamMembers(members = []) {
+        AllTeamMembers = members;
+        window.AllTeamMembers = AllTeamMembers;
+    }
 
-function setAllProjectTemplates(templates = []) {
-    AllProjectTemplates = templates;
-    window.AllProjectTemplates = AllProjectTemplates;
-}
+    function setAllProjectTemplates(templates = []) {
+        AllProjectTemplates = templates;
+        window.AllProjectTemplates = AllProjectTemplates;
+    }
 
-const DEFAULT_CLIENT_PROFILE = {
+    const DEFAULT_CLIENT_PROFILE = {
     name: 'Client',
     title: 'Stakeholder',
     company: 'Company',
@@ -72,7 +76,7 @@ const DEFAULT_CLIENT_PROFILE = {
     }
 };
 
-function resetToDefaultState() {
+    function resetToDefaultState() {
     GameState.currentWeek = 1;
     GameState.currentDay = 1;
     GameState.currentHour = 9;
@@ -100,9 +104,10 @@ function resetToDefaultState() {
     GameState.gamePhase = 'tutorial';
     GameState.gameOver = false;
     GameState.victoryPath = null;
+    GameState.lastSalaryMonth = -1;
 }
 
-function saveState() {
+    function saveState() {
     try {
         localStorage.setItem('agencyChaosState', JSON.stringify(GameState));
     } catch (e) {
@@ -110,26 +115,26 @@ function saveState() {
     }
 }
 
-function getTeamMemberById(memberId) {
+    function getTeamMemberById(memberId) {
     if (!memberId) return null;
     return GameState.team.find(m => m.id === memberId)
         || AllTeamMembers.find(m => m.id === memberId)
         || null;
 }
 
-function getTeamMemberName(memberId) {
+    function getTeamMemberName(memberId) {
     const member = getTeamMemberById(memberId);
     return member ? member.name : memberId;
 }
 
-function adjustMemberMorale(member, delta = 0) {
+    function adjustMemberMorale(member, delta = 0) {
     if (!member || !member.morale || typeof delta !== 'number' || delta === 0) return;
     const min = member.morale.min ?? 0;
     const max = member.morale.max ?? 100;
     member.morale.current = Math.max(min, Math.min(max, member.morale.current + delta));
 }
 
-function recalculateTeamMorale() {
+    function recalculateTeamMorale() {
     const members = GameState.team.filter(m => m.id !== 'player' && m.morale);
     if (members.length === 0) {
         GameState.teamMorale = 0;
@@ -139,7 +144,7 @@ function recalculateTeamMorale() {
     GameState.teamMorale = Math.round(avg);
 }
 
-function applyTeamMoraleConsequence(change) {
+    function applyTeamMoraleConsequence(change) {
     if (change === undefined || change === null) return;
 
     if (typeof change === 'number') {
@@ -176,7 +181,7 @@ function applyTeamMoraleConsequence(change) {
     }
 }
 
-function describeTeamMoraleChange(change) {
+    function describeTeamMoraleChange(change) {
     if (change === undefined || change === null) return [];
     const entries = [];
     const addGlobalEntry = delta => {
@@ -215,7 +220,7 @@ function describeTeamMoraleChange(change) {
     return entries;
 }
 
-function formatConsequences(consequences = {}) {
+    function formatConsequences(consequences = {}) {
     const hints = [];
 
     if (typeof consequences.money === 'number' && consequences.money !== 0) {
@@ -242,7 +247,7 @@ function formatConsequences(consequences = {}) {
     return hints.length ? hints.join(' • ') : 'No immediate impact';
 }
 
-function recordKeyMoment(title, description, type = 'info') {
+    function recordKeyMoment(title, description, type = 'info') {
     GameState.keyMoments.push({
         week: GameState.currentWeek,
         day: GameState.currentDay,
@@ -252,22 +257,45 @@ function recordKeyMoment(title, description, type = 'info') {
     });
 }
 
-window.GameState = GameState;
-window.AllConversations = AllConversations;
-window.AllTeamMembers = AllTeamMembers;
-window.AllProjectTemplates = AllProjectTemplates;
-window.DEFAULT_CLIENT_PROFILE = DEFAULT_CLIENT_PROFILE;
-window.setAllConversations = setAllConversations;
-window.setAllTeamMembers = setAllTeamMembers;
-window.setAllProjectTemplates = setAllProjectTemplates;
-window.resetToDefaultState = resetToDefaultState;
-window.saveState = saveState;
-window.getTeamMemberById = getTeamMemberById;
-window.getTeamMemberName = getTeamMemberName;
-window.adjustMemberMorale = adjustMemberMorale;
-window.recalculateTeamMorale = recalculateTeamMorale;
-window.applyTeamMoraleConsequence = applyTeamMoraleConsequence;
-window.describeTeamMoraleChange = describeTeamMoraleChange;
-window.formatConsequences = formatConsequences;
-window.recordKeyMoment = recordKeyMoment;
+    return {
+        GameState,
+        AllConversations,
+        AllTeamMembers,
+        AllProjectTemplates,
+        DEFAULT_CLIENT_PROFILE,
+        setAllConversations,
+        setAllTeamMembers,
+        setAllProjectTemplates,
+        resetToDefaultState,
+        saveState,
+        getTeamMemberById,
+        getTeamMemberName,
+        adjustMemberMorale,
+        recalculateTeamMorale,
+        applyTeamMoraleConsequence,
+        describeTeamMoraleChange,
+        formatConsequences,
+        recordKeyMoment
+    };
+})();
+
+// Expose on window for backward compatibility
+window.GameState = GameStateModule.GameState;
+window.AllConversations = GameStateModule.AllConversations;
+window.AllTeamMembers = GameStateModule.AllTeamMembers;
+window.AllProjectTemplates = GameStateModule.AllProjectTemplates;
+window.DEFAULT_CLIENT_PROFILE = GameStateModule.DEFAULT_CLIENT_PROFILE;
+window.setAllConversations = GameStateModule.setAllConversations;
+window.setAllTeamMembers = GameStateModule.setAllTeamMembers;
+window.setAllProjectTemplates = GameStateModule.setAllProjectTemplates;
+window.resetToDefaultState = GameStateModule.resetToDefaultState;
+window.saveState = GameStateModule.saveState;
+window.getTeamMemberById = GameStateModule.getTeamMemberById;
+window.getTeamMemberName = GameStateModule.getTeamMemberName;
+window.adjustMemberMorale = GameStateModule.adjustMemberMorale;
+window.recalculateTeamMorale = GameStateModule.recalculateTeamMorale;
+window.applyTeamMoraleConsequence = GameStateModule.applyTeamMoraleConsequence;
+window.describeTeamMoraleChange = GameStateModule.describeTeamMoraleChange;
+window.formatConsequences = GameStateModule.formatConsequences;
+window.recordKeyMoment = GameStateModule.recordKeyMoment;
 

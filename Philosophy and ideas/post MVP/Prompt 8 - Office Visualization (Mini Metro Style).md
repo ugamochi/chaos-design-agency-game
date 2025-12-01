@@ -33,3 +33,5 @@ Use only: circles, lines, simple geometric shapes, 5-6 colors max.
 
 Please provide the office view module as a separate system that integrates with existing game state.
 
+
+

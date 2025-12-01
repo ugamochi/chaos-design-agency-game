@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agency Chaos Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -32,6 +33,14 @@
                             <span class="resource-label">⭐ Satisfaction:</span>
                             <span id="satisfaction" class="resource-value">--</span>
                         </div>
+                        <div class="resource-item">
+                            <span class="resource-label">🔥 Burnout:</span>
+                            <span id="burnout" class="resource-value">0%</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">⏰ Hours:</span>
+                            <span id="playerHours" class="resource-value">8/8</span>
+                        </div>
                     </div>
                     <button id="settingsBtn" class="btn-icon" title="Settings">⚙️</button>
                 </div>
@@ -41,6 +50,8 @@
                         <span id="gameClock" class="clock-time">9:00 AM</span>
                     </div>
                     <button id="advanceDayBtn" class="btn btn-primary">Advance Day</button>
+                    <button id="callInSickBtn" class="btn btn-secondary" title="Call in sick to recover (reduces burnout, but you'll lose hours and emails will pile up)">😷 Call in Sick</button>
+                    <button id="autoAssignBtn" class="btn btn-secondary" title="Automatically assign available workers to projects">⚡ Auto-Assign</button>
                     <button id="viewSummaryBtn" class="btn btn-secondary">View Summary</button>
                     <button id="testBtn" class="btn btn-test">Test: Log State</button>
                     <button id="resetBtn" class="btn btn-danger">Reset Game</button>
@@ -196,6 +207,10 @@
         </div>
     </div>
 
+    <script src="utils.js"></script>
+    <script src="constants.js"></script>
+    <script src="dom-helpers.js"></script>
+    <script src="logger.js"></script>
     <script src="state.js"></script>
     <script src="projects.js"></script>
     <script src="conversations.js"></script>
