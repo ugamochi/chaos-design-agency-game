@@ -1,6 +1,9 @@
 // Game Feel Animations and Effects
 
-function screenShake(intensity = 'medium') {
+const AnimationsModule = (function() {
+    'use strict';
+
+    function screenShake(intensity = 'medium') {
     const container = document.querySelector('.game-container');
     if (!container) return;
 
@@ -18,7 +21,7 @@ function screenShake(intensity = 'medium') {
     }, 500);
 }
 
-function showConfetti() {
+    function showConfetti() {
     const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd93d', '#6bcf7f', '#a78bfa'];
     const confettiCount = 50;
     const container = document.createElement('div');
@@ -40,7 +43,7 @@ function showConfetti() {
     }, 4000);
 }
 
-function pulseElement(selector, duration = 1000) {
+    function pulseElement(selector, duration = 1000) {
     const element = document.querySelector(selector);
     if (!element) return;
 
@@ -50,7 +53,7 @@ function pulseElement(selector, duration = 1000) {
     }, duration);
 }
 
-function flashElement(selector, color = 'success') {
+    function flashElement(selector, color = 'success') {
     const element = document.querySelector(selector);
     if (!element) return;
 
@@ -60,7 +63,7 @@ function flashElement(selector, color = 'success') {
     }, 600);
 }
 
-function fadeInElement(selector) {
+    function fadeInElement(selector) {
     const element = document.querySelector(selector);
     if (!element) return;
 
@@ -74,7 +77,7 @@ function fadeInElement(selector) {
     }, 10);
 }
 
-function showFloatingText(text, x, y, type = 'info') {
+    function showFloatingText(text, x, y, type = 'info') {
     const floating = document.createElement('div');
     floating.className = `floating-text floating-${type}`;
     floating.textContent = text;
@@ -88,7 +91,7 @@ function showFloatingText(text, x, y, type = 'info') {
     }, 2000);
 }
 
-function animateNumber(element, start, end, duration = 1000) {
+    function animateNumber(element, start, end, duration = 1000) {
     if (!element) return;
     
     const range = end - start;
@@ -112,7 +115,7 @@ function animateNumber(element, start, end, duration = 1000) {
     }, 16);
 }
 
-function celebrateProjectCompletion(projectName) {
+    function celebrateProjectCompletion(projectName) {
     showConfetti();
     screenShake('light');
     
@@ -140,7 +143,7 @@ function celebrateProjectCompletion(projectName) {
     playSound('completion');
 }
 
-function showCrisisWarning(message) {
+    function showCrisisWarning(message) {
     screenShake('heavy');
     
     const warning = document.createElement('div');
@@ -164,7 +167,7 @@ function showCrisisWarning(message) {
     playSound('warning');
 }
 
-function showSuccessToast(message, duration = 2000) {
+    function showSuccessToast(message, duration = 2000) {
     const toast = document.createElement('div');
     toast.className = 'success-toast';
     toast.innerHTML = `
@@ -184,7 +187,7 @@ function showSuccessToast(message, duration = 2000) {
     }, duration);
 }
 
-function showWarningToast(message, duration = 3000) {
+    function showWarningToast(message, duration = 3000) {
     const toast = document.createElement('div');
     toast.className = 'warning-toast';
     toast.innerHTML = `
@@ -212,13 +215,13 @@ const soundHooks = {
     click: () => {}
 };
 
-function playSound(soundType) {
+    function playSound(soundType) {
     if (soundHooks[soundType]) {
         soundHooks[soundType]();
     }
 }
 
-function celebrateVictory(victoryPath) {
+    function celebrateVictory(victoryPath) {
     if (victoryPath === 'rockstar') {
         showConfetti();
         setTimeout(() => showConfetti(), 500);
@@ -231,7 +234,7 @@ function celebrateVictory(victoryPath) {
     playSound('completion');
 }
 
-function showLoadingAnimation(message = 'Processing...') {
+    function showLoadingAnimation(message = 'Processing...') {
     const loader = document.createElement('div');
     loader.className = 'loading-overlay';
     loader.id = 'loadingOverlay';
@@ -250,7 +253,7 @@ function showLoadingAnimation(message = 'Processing...') {
     };
 }
 
-function rippleEffect(event) {
+    function rippleEffect(event) {
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -268,9 +271,47 @@ function rippleEffect(event) {
     }, 600);
 }
 
-function initButtonAnimations() {
-    document.querySelectorAll('.btn').forEach(button => {
-        button.addEventListener('click', rippleEffect);
-    });
-}
+    function initButtonAnimations() {
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', rippleEffect);
+        });
+    }
+
+    return {
+        screenShake,
+        showConfetti,
+        pulseElement,
+        flashElement,
+        fadeInElement,
+        showFloatingText,
+        animateNumber,
+        celebrateProjectCompletion,
+        showCrisisWarning,
+        showSuccessToast,
+        showWarningToast,
+        playSound,
+        celebrateVictory,
+        showLoadingAnimation,
+        rippleEffect,
+        initButtonAnimations
+    };
+})();
+
+// Expose on window for backward compatibility
+window.screenShake = AnimationsModule.screenShake;
+window.showConfetti = AnimationsModule.showConfetti;
+window.pulseElement = AnimationsModule.pulseElement;
+window.flashElement = AnimationsModule.flashElement;
+window.fadeInElement = AnimationsModule.fadeInElement;
+window.showFloatingText = AnimationsModule.showFloatingText;
+window.animateNumber = AnimationsModule.animateNumber;
+window.celebrateProjectCompletion = AnimationsModule.celebrateProjectCompletion;
+window.showCrisisWarning = AnimationsModule.showCrisisWarning;
+window.showSuccessToast = AnimationsModule.showSuccessToast;
+window.showWarningToast = AnimationsModule.showWarningToast;
+window.playSound = AnimationsModule.playSound;
+window.celebrateVictory = AnimationsModule.celebrateVictory;
+window.showLoadingAnimation = AnimationsModule.showLoadingAnimation;
+window.rippleEffect = AnimationsModule.rippleEffect;
+window.initButtonAnimations = AnimationsModule.initButtonAnimations;
 

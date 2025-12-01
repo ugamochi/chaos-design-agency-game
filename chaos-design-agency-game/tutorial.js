@@ -1,6 +1,9 @@
 // Tutorial System
 
-let tutorialState = {
+const TutorialModule = (function() {
+    'use strict';
+
+    let tutorialState = {
     enabled: true,
     completed: false,
     currentStep: 0,
@@ -73,7 +76,7 @@ let tutorialState = {
     ]
 };
 
-function initTutorial() {
+    function initTutorial() {
     const savedTutorialState = localStorage.getItem('agencyChaosTutorial');
     const isNewGame = GameState.currentWeek === 1 && GameState.currentDay === 1;
     
@@ -103,7 +106,7 @@ function initTutorial() {
     }
 }
 
-function showTutorialStep(stepIndex) {
+    function showTutorialStep(stepIndex) {
     if (!tutorialState.enabled || tutorialState.completed) return;
     if (stepIndex >= tutorialState.steps.length) {
         completeTutorial();
@@ -171,7 +174,7 @@ function showTutorialStep(stepIndex) {
     }
 }
 
-function positionTooltip(tooltip, targetElement, position) {
+    function positionTooltip(tooltip, targetElement, position) {
     if (!targetElement || position === 'center') {
         tooltip.style.position = 'fixed';
         tooltip.style.top = '50%';
@@ -207,7 +210,7 @@ function positionTooltip(tooltip, targetElement, position) {
     }
 }
 
-function nextTutorialStep() {
+    function nextTutorialStep() {
     const currentStep = tutorialState.steps[tutorialState.currentStep];
     
     removeTutorialHighlight();
@@ -225,7 +228,7 @@ function nextTutorialStep() {
     }
 }
 
-function skipTutorial() {
+    function skipTutorial() {
     if (confirm('Skip the tutorial? You can access help anytime from the settings menu.')) {
         removeTutorialHighlight();
         removeTutorialOverlay();
@@ -235,7 +238,7 @@ function skipTutorial() {
     }
 }
 
-function completeTutorial() {
+    function completeTutorial() {
     removeTutorialHighlight();
     removeTutorialOverlay();
     tutorialState.completed = true;
@@ -244,20 +247,20 @@ function completeTutorial() {
     showContextualTip('Tutorial Complete!', 'You can access help anytime from the ⚙️ settings menu.', 'success');
 }
 
-function removeTutorialOverlay() {
+    function removeTutorialOverlay() {
     const overlay = document.getElementById('tutorialOverlay');
     if (overlay) {
         overlay.remove();
     }
 }
 
-function removeTutorialHighlight() {
+    function removeTutorialHighlight() {
     document.querySelectorAll('.tutorial-highlight').forEach(el => {
         el.classList.remove('tutorial-highlight');
     });
 }
 
-function saveTutorialState() {
+    function saveTutorialState() {
     localStorage.setItem('agencyChaosTutorial', JSON.stringify({
         completed: tutorialState.completed,
         enabled: tutorialState.enabled,
@@ -265,7 +268,7 @@ function saveTutorialState() {
     }));
 }
 
-function showContextualTip(title, message, type = 'info', duration = 4000) {
+    function showContextualTip(title, message, type = 'info', duration = 4000) {
     const tip = document.createElement('div');
     tip.className = `contextual-tip ${type}`;
     tip.innerHTML = `
@@ -290,7 +293,7 @@ function showContextualTip(title, message, type = 'info', duration = 4000) {
     }
 }
 
-function checkForContextualTips() {
+    function checkForContextualTips() {
     if (tutorialState.completed && tutorialState.enabled) {
         if (GameState.money < 1000 && GameState.money > -1000) {
             showContextualTip('💰 Low Cash Warning', 'You\'re running low on money. Consider finishing projects or taking on quick work.', 'warning', 5000);
@@ -311,12 +314,47 @@ function checkForContextualTips() {
     }
 }
 
-function resumeTutorialAfterConversation() {
-    const step = tutorialState.steps[tutorialState.currentStep];
-    if (step && step.waitForConversation && currentConversation === null) {
-        setTimeout(() => {
-            showTutorialStep(tutorialState.currentStep + 1);
-        }, 500);
+    function resumeTutorialAfterConversation() {
+        const step = tutorialState.steps[tutorialState.currentStep];
+        if (step && step.waitForConversation && window.currentConversation === null) {
+            setTimeout(() => {
+                showTutorialStep(tutorialState.currentStep + 1);
+            }, 500);
+        }
     }
-}
+
+    return {
+        getTutorialState: () => tutorialState,
+        initTutorial,
+        showTutorialStep,
+        positionTooltip,
+        nextTutorialStep,
+        skipTutorial,
+        completeTutorial,
+        removeTutorialOverlay,
+        removeTutorialHighlight,
+        saveTutorialState,
+        showContextualTip,
+        checkForContextualTips,
+        resumeTutorialAfterConversation
+    };
+})();
+
+// Expose on window for backward compatibility
+window.tutorialState = TutorialModule.getTutorialState();
+Object.defineProperty(window, 'tutorialState', {
+    get: () => TutorialModule.getTutorialState()
+});
+window.initTutorial = TutorialModule.initTutorial;
+window.showTutorialStep = TutorialModule.showTutorialStep;
+window.positionTooltip = TutorialModule.positionTooltip;
+window.nextTutorialStep = TutorialModule.nextTutorialStep;
+window.skipTutorial = TutorialModule.skipTutorial;
+window.completeTutorial = TutorialModule.completeTutorial;
+window.removeTutorialOverlay = TutorialModule.removeTutorialOverlay;
+window.removeTutorialHighlight = TutorialModule.removeTutorialHighlight;
+window.saveTutorialState = TutorialModule.saveTutorialState;
+window.showContextualTip = TutorialModule.showContextualTip;
+window.checkForContextualTips = TutorialModule.checkForContextualTips;
+window.resumeTutorialAfterConversation = TutorialModule.resumeTutorialAfterConversation;
 

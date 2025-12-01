@@ -1,13 +1,16 @@
 // UI rendering and interactions
 
-function highlightTeamMemberCard(memberId) {
+const UIModule = (function() {
+    'use strict';
+
+    function highlightTeamMemberCard(memberId) {
     const card = document.querySelector(`.team-member-card[data-member-id="${memberId}"]`);
     if (!card) return;
     card.classList.add('assignment-changed');
     setTimeout(() => card.classList.remove('assignment-changed'), 1200);
 }
 
-function showProjectCompletion(project) {
+    function showProjectCompletion(project) {
     const projectCard = document.querySelector(`[data-project-id="${project.id}"]`);
     if (projectCard) {
         projectCard.classList.add('project-complete-celebration');
@@ -17,16 +20,16 @@ function showProjectCompletion(project) {
     }
 }
 
-function showWeekSummary() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    function showWeekSummary() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
 
-    const activeProjects = GameState.projects.filter(p => p.status !== 'complete');
+        const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
     const upcomingDeadlines = activeProjects.filter(p => p.weeksRemaining < 2);
 
     modal.innerHTML = `
         <div class="modal-content week-summary">
-            <h2>Week ${GameState.currentWeek} Summary</h2>
+            <h2>Week ${window.GameState.currentWeek} Summary</h2>
 
             <div class="summary-section">
                 <h3>Projects Progress</h3>
@@ -45,8 +48,8 @@ function showWeekSummary() {
             <div class="summary-section">
                 <h3>😊 Team Morale</h3>
                 <div class="summary-morale">
-                    Average: ${GameState.teamMorale}%
-                    ${GameState.team.filter(m => m.id !== 'player').map(m => `
+                    Average: ${window.GameState.teamMorale}%
+                    ${window.GameState.team.filter(m => m.id !== 'player').map(m => `
                         <div>${m.name}: 😊 ${m.morale.current}%</div>
                     `).join('')}
                 </div>
@@ -61,7 +64,7 @@ function showWeekSummary() {
                 </div>
             ` : ''}
 
-            <button class="btn-primary btn-continue-week">Continue to Week ${GameState.currentWeek}</button>
+            <button class="btn-primary btn-continue-week">Continue to Week ${window.GameState.currentWeek}</button>
         </div>
     `;
 
@@ -78,43 +81,43 @@ function showWeekSummary() {
     });
 }
 
-function displayGameState() {
-    document.getElementById('currentWeek').textContent = GameState.currentWeek;
-    document.getElementById('currentDay').textContent = GameState.currentDay;
+    function displayGameState() {
+        document.getElementById('currentWeek').textContent = window.GameState.currentWeek;
+        document.getElementById('currentDay').textContent = window.GameState.currentDay;
 
-    document.getElementById('money').textContent = `$${GameState.money.toLocaleString()}`;
-    document.getElementById('teamMorale').textContent = `${GameState.teamMorale}%`;
+        document.getElementById('money').textContent = `$${window.GameState.money.toLocaleString()}`;
+        document.getElementById('teamMorale').textContent = `${window.GameState.teamMorale}%`;
 
-    const avgSatisfaction = calculateAverageSatisfaction();
-    document.getElementById('satisfaction').textContent = avgSatisfaction !== null ? `${Math.round(avgSatisfaction)}%` : '--';
+        const avgSatisfaction = calculateAverageSatisfaction();
+        document.getElementById('satisfaction').textContent = avgSatisfaction !== null ? `${Math.round(avgSatisfaction)}%` : '--';
 
-    updateClock();
-    displayProjects();
-    displayTeam();
-    updateNotificationBadge();
-    checkUnassignedProjectsWarning();
+        window.updateClock();
+        displayProjects();
+        displayTeam();
+        window.updateNotificationBadge();
+        window.checkUnassignedProjectsWarning();
 
-    if (currentConversation === null) {
-        updateMainContent();
-    }
+        if (window.currentConversation === null) {
+            window.updateMainContent();
+        }
 }
 
-function displayProjects() {
+    function displayProjects() {
     const container = document.getElementById('projectsContainer');
     container.innerHTML = '';
 
-    if (GameState.projects.length === 0) {
-        container.innerHTML = '<p style="color: #999; font-style: italic;">No active projects</p>';
-        return;
-    }
+        if (window.GameState.projects.length === 0) {
+            container.innerHTML = '<p style="color: #999; font-style: italic;">No active projects</p>';
+            return;
+        }
 
-    GameState.projects.forEach(project => {
+        window.GameState.projects.forEach(project => {
         const projectCard = createProjectCard(project);
         container.appendChild(projectCard);
     });
 }
 
-function createProjectCard(project) {
+    function createProjectCard(project) {
     const card = document.createElement('div');
     card.className = 'project-card';
     card.setAttribute('data-project-id', project.id);
@@ -122,7 +125,7 @@ function createProjectCard(project) {
     const progressPercent = Math.round(project.progress * 100);
     const weeksRemaining = Math.ceil(project.weeksRemaining);
 
-    const assignedMembers = GameState.team.filter(m => m.currentAssignment === project.id);
+        const assignedMembers = window.GameState.team.filter(m => m.currentAssignment === project.id);
     const teamAvatars = assignedMembers.map(m => {
         const initials = m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         return `<span class="team-avatar" title="${m.name}">${initials}</span>`;
@@ -257,23 +260,23 @@ function createProjectCard(project) {
     return card;
 }
 
-function displayTeam() {
+    function displayTeam() {
     const container = document.getElementById('teamContainer');
     container.innerHTML = '';
 
-    if (GameState.team.length === 0) {
-        container.innerHTML = '<p style="color: #999; font-style: italic;">No team members available</p>';
-        return;
-    }
+        if (window.GameState.team.length === 0) {
+            container.innerHTML = '<p style="color: #999; font-style: italic;">No team members available</p>';
+            return;
+        }
 
-    GameState.team.forEach(member => {
-        const status = getTeamMemberStatus(member.id);
-        const memberCard = createTeamMemberCard(member, status);
-        container.appendChild(memberCard);
-    });
+        window.GameState.team.forEach(member => {
+            const status = window.getTeamMemberStatus(member.id);
+            const memberCard = createTeamMemberCard(member, status);
+            container.appendChild(memberCard);
+        });
 }
 
-function createTeamMemberCard(member, status) {
+    function createTeamMemberCard(member, status) {
     const card = document.createElement('div');
     card.className = `team-member-card ${status.assignmentClass}`;
     card.setAttribute('data-member-id', member.id);
@@ -318,14 +321,14 @@ function createTeamMemberCard(member, status) {
     return card;
 }
 
-function showAssignmentModal(memberId) {
-    const member = GameState.team.find(m => m.id === memberId);
-    if (!member) return;
+    function showAssignmentModal(memberId) {
+        const member = window.GameState.team.find(m => m.id === memberId);
+        if (!member) return;
 
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
 
-    const activeProjects = GameState.projects.filter(p => p.status !== 'complete');
+        const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
 
     modal.innerHTML = `
         <div class="modal-content assignment-modal">
@@ -350,7 +353,7 @@ function showAssignmentModal(memberId) {
     modal.querySelectorAll('.assignment-option').forEach(option => {
         option.addEventListener('click', () => {
             const projectId = option.getAttribute('data-project-id');
-            assignTeamMember(memberId, projectId);
+            window.assignTeamMember(memberId, projectId);
             modal.remove();
         });
     });
@@ -364,31 +367,31 @@ function showAssignmentModal(memberId) {
     });
 }
 
-function calculateAverageSatisfaction() {
-    if (GameState.projects.length === 0) return null;
+    function calculateAverageSatisfaction() {
+        if (window.GameState.projects.length === 0) return null;
 
-    const totalSatisfaction = GameState.projects.reduce((sum, project) => {
-        return sum + project.satisfaction;
-    }, 0);
+        const totalSatisfaction = window.GameState.projects.reduce((sum, project) => {
+            return sum + project.satisfaction;
+        }, 0);
 
-    return totalSatisfaction / GameState.projects.length;
+        return totalSatisfaction / window.GameState.projects.length;
 }
 
-function updateMainContent() {
+    function updateMainContent() {
     const advanceBtn = document.getElementById('advanceDayBtn');
     if (advanceBtn) {
         advanceBtn.classList.remove('btn-disabled-while-conversation');
         advanceBtn.title = '';
     }
 
-    if (currentConversation !== null) {
+    if (window.currentConversation !== null) {
         return;
     }
 
     const contentArea = document.getElementById('contentArea');
     const activityFeed = document.getElementById('activityFeed');
     if (activityFeed) {
-        const recentEvents = GameState.conversationHistory.slice(-5).reverse();
+            const recentEvents = window.GameState.conversationHistory.slice(-5).reverse();
         if (recentEvents.length > 0) {
             activityFeed.innerHTML = recentEvents.map(event => {
                 const eventClass = event.type || 'info';
@@ -410,16 +413,16 @@ function updateMainContent() {
     }
 }
 
-function displayConversation(conversation) {
-    currentConversation = conversation;
-    selectedChoiceId = null;
-    currentConversationStartTime = Date.now();
-    currentConversationMeta = {
+    function displayConversation(conversation) {
+        window.currentConversation = conversation;
+        window.selectedChoiceId = null;
+        window.currentConversationStartTime = Date.now();
+        window.currentConversationMeta = {
         linkedProjectId: conversation.linkedProjectId,
         responseDeadlineHours: conversation.responseDeadlineHours
     };
     
-    const player = GameState.team.find(m => m.id === 'player');
+        const player = window.GameState.team.find(m => m.id === 'player');
     if (player && player.hours > 0) {
         const hoursSpent = Math.min(player.hours, 0.5);
         player.hours = Math.max(0, player.hours - hoursSpent);
@@ -435,7 +438,7 @@ function displayConversation(conversation) {
     const choicesHtml = conversation.choices.map(choice => `
         <button class="choice-btn" data-choice-id="${choice.id}">
             <div class="choice-text">${choice.text}</div>
-            <div class="consequence-hint">${formatConsequences(choice.consequences)}</div>
+            <div class="consequence-hint">${window.formatConsequences(choice.consequences)}</div>
         </button>
     `).join('');
 
@@ -478,17 +481,17 @@ function displayConversation(conversation) {
             showSuccessToast('📌 Conversation postponed - I\'ll remind you later today', 2500);
             
             setTimeout(() => {
-                deferConversation(conversation.id);
-                currentConversation = null;
-                selectedChoiceId = null;
-                displayGameState();
-                checkForConversations();
+                window.deferConversation(conversation.id);
+                window.currentConversation = null;
+                window.selectedChoiceId = null;
+                window.displayGameState();
+                window.checkForConversations();
             }, 300);
         });
     }
 }
 
-function showConsequenceFeedback(flavorText, consequences) {
+    function showConsequenceFeedback(flavorText, consequences) {
     const contentArea = document.getElementById('contentArea');
     
     const existingFeedback = contentArea.querySelector('.consequence-feedback');
@@ -499,7 +502,7 @@ function showConsequenceFeedback(flavorText, consequences) {
     const feedback = document.createElement('div');
     feedback.className = 'consequence-feedback';
     feedback.id = 'currentConsequenceFeedback';
-    const summary = formatConsequences(consequences);
+        const summary = window.formatConsequences(consequences);
     feedback.innerHTML = `
         <p class="feedback-flavor"><strong>${flavorText || 'Decision logged.'}</strong></p>
         <div class="feedback-consequences">${summary}</div>
@@ -510,7 +513,7 @@ function showConsequenceFeedback(flavorText, consequences) {
     contentArea.appendChild(feedback);
 }
 
-function animateResourceChange(resourceId, oldValue, newValue) {
+    function animateResourceChange(resourceId, oldValue, newValue) {
     const element = document.getElementById(resourceId);
     if (!element) return;
 
@@ -531,11 +534,11 @@ function animateResourceChange(resourceId, oldValue, newValue) {
     }, 1500);
 }
 
-function highlightProject(projectId) {
+    function highlightProject(projectId) {
     const projectCards = document.querySelectorAll('.project-card');
     projectCards.forEach(card => {
         const nameEl = card.querySelector('.project-name');
-        const project = GameState.projects.find(p => p.id === projectId);
+        const project = window.GameState.projects.find(p => p.id === projectId);
         if (project && nameEl && nameEl.textContent === project.name) {
             card.classList.add('project-highlight');
             setTimeout(() => {
@@ -545,25 +548,25 @@ function highlightProject(projectId) {
     });
 }
 
-function updateNotificationBadge() {
+    function updateNotificationBadge() {
     const badge = document.getElementById('notificationBadge');
     if (badge) {
-        const count = GameState.conversationQueue.length;
+        const count = window.GameState.conversationQueue.length;
         badge.textContent = count > 0 ? `${count} notification${count !== 1 ? 's' : ''}` : '0 notifications';
         badge.style.display = count > 0 ? 'inline-block' : 'none';
     }
 }
 
-function checkUnassignedProjectsWarning() {
-    const activeProjects = GameState.projects.filter(p => p.status !== 'complete');
-    const unassignedProjects = activeProjects.filter(p => {
-        const assignedMembers = GameState.team.filter(m => m.currentAssignment === p.id);
-        return assignedMembers.length === 0;
-    });
+    function checkUnassignedProjectsWarning() {
+        const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
+        const unassignedProjects = activeProjects.filter(p => {
+            const assignedMembers = window.GameState.team.filter(m => m.currentAssignment === p.id);
+            return assignedMembers.length === 0;
+        });
 
-    let warningBanner = document.getElementById('unassignedProjectsWarning');
-    
-    if (unassignedProjects.length > 0 && !GameState.gameOver) {
+        let warningBanner = document.getElementById('unassignedProjectsWarning');
+        
+        if (unassignedProjects.length > 0 && !window.GameState.gameOver) {
         if (!warningBanner) {
             warningBanner = document.createElement('div');
             warningBanner.id = 'unassignedProjectsWarning';
@@ -589,7 +592,7 @@ function checkUnassignedProjectsWarning() {
     }
 }
 
-function showResetConfirmModal() {
+    function showResetConfirmModal() {
     const modal = document.getElementById('resetModal');
     if (!modal) return;
 
@@ -614,39 +617,39 @@ function showResetConfirmModal() {
     }, { once: true });
 }
 
-function viewSummary() {
+    function viewSummary() {
     const summary = `
 === AGENCY CHAOS SIMULATOR SUMMARY ===
-Week: ${GameState.currentWeek} | Day: ${GameState.currentDay}
-Money: $${GameState.money.toLocaleString()}
-Team Morale: ${GameState.teamMorale}
+Week: ${window.GameState.currentWeek} | Day: ${window.GameState.currentDay}
+Money: $${window.GameState.money.toLocaleString()}
+Team Morale: ${window.GameState.teamMorale}
 Average Client Satisfaction: ${calculateAverageSatisfaction() !== null ? Math.round(calculateAverageSatisfaction()) + '%' : 'N/A'}
 
-Active Projects: ${GameState.projects.filter(p => p.status !== 'complete').length}
-Completed Projects: ${GameState.projects.filter(p => p.status === 'complete').length}
+Active Projects: ${window.GameState.projects.filter(p => p.status !== 'complete').length}
+Completed Projects: ${window.GameState.projects.filter(p => p.status === 'complete').length}
 
-Team Members: ${GameState.team.length}
-Pending Conversations: ${GameState.conversationQueue.length}
-Conversation History: ${GameState.conversationHistory.length}
+Team Members: ${window.GameState.team.length}
+Pending Conversations: ${window.GameState.conversationQueue.length}
+Conversation History: ${window.GameState.conversationHistory.length}
     `;
 
     alert(summary);
     console.log(summary);
 }
 
-function showEndGameScreen(endReason, victoryPath, score, rank, message) {
+    function showEndGameScreen(endReason, victoryPath, score, rank, message) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay end-game-modal';
     
     const isVictory = endReason === 'victory';
     const pathClass = isVictory ? `victory-${victoryPath}` : 'defeat';
     
-    const stats = GameState.gameStats;
-    const avgSatisfaction = stats.projectsCompleted > 0 
-        ? Math.round(stats.totalSatisfactionPoints / stats.projectsCompleted) 
-        : 0;
+        const stats = window.GameState.gameStats;
+        const avgSatisfaction = stats.projectsCompleted > 0 
+            ? Math.round(stats.totalSatisfactionPoints / stats.projectsCompleted) 
+            : 0;
 
-    const keyMomentsHtml = GameState.keyMoments.slice(-10).map(moment => `
+        const keyMomentsHtml = window.GameState.keyMoments.slice(-10).map(moment => `
         <div class="key-moment ${moment.type}">
             <span class="moment-week">Week ${moment.week}.${moment.day}</span>
             <span class="moment-title">${moment.title}</span>
@@ -671,11 +674,11 @@ function showEndGameScreen(endReason, victoryPath, score, rank, message) {
                     <div class="stat-grid">
                         <div class="stat-item">
                             <span class="stat-label">Weeks Survived</span>
-                            <span class="stat-value">${GameState.currentWeek}/12</span>
+                            <span class="stat-value">${window.GameState.currentWeek}/12</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">💰 Final Money</span>
-                            <span class="stat-value ${GameState.money >= 0 ? 'positive' : 'negative'}">$${GameState.money.toLocaleString()}</span>
+                            <span class="stat-value ${window.GameState.money >= 0 ? 'positive' : 'negative'}">$${window.GameState.money.toLocaleString()}</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">📦 Projects Completed</span>
@@ -687,7 +690,7 @@ function showEndGameScreen(endReason, victoryPath, score, rank, message) {
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">😊 Team Morale</span>
-                            <span class="stat-value">${GameState.teamMorale}%</span>
+                            <span class="stat-value">${window.GameState.teamMorale}%</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Perfect Deliveries</span>
@@ -731,7 +734,7 @@ function showEndGameScreen(endReason, victoryPath, score, rank, message) {
                     <div class="final-score">${score.toLocaleString()}</div>
                 </div>
 
-                ${GameState.keyMoments.length > 0 ? `
+                ${window.GameState.keyMoments.length > 0 ? `
                     <div class="stat-section key-moments-section">
                         <h3>Key Moments</h3>
                         <div class="key-moments-list">
@@ -756,7 +759,7 @@ function showEndGameScreen(endReason, victoryPath, score, rank, message) {
     });
 
     modal.querySelector('.btn-share-score').addEventListener('click', () => {
-        const shareText = `Agency Chaos Simulator - ${rank}\nScore: ${score.toLocaleString()}\nProjects: ${stats.projectsCompleted} | Money: $${GameState.money.toLocaleString()} | Satisfaction: ${avgSatisfaction}%`;
+            const shareText = `Agency Chaos Simulator - ${rank}\nScore: ${score.toLocaleString()}\nProjects: ${stats.projectsCompleted} | Money: $${window.GameState.money.toLocaleString()} | Satisfaction: ${avgSatisfaction}%`;
         
         navigator.clipboard.writeText(shareText).then(() => {
             const btn = modal.querySelector('.btn-share-score');
@@ -771,7 +774,7 @@ function showEndGameScreen(endReason, victoryPath, score, rank, message) {
     });
 }
 
-function setupEventListeners() {
+    function setupEventListeners() {
     document.getElementById('advanceDayBtn').addEventListener('click', () => {
         advanceDay();
         resumeTutorialAfterConversation();
@@ -783,8 +786,8 @@ function setupEventListeners() {
 
     document.getElementById('testBtn').addEventListener('click', () => {
         console.log('Current Game State:', JSON.stringify(GameState, null, 2));
-        console.log('Projects:', GameState.projects);
-        console.log('Week:', GameState.currentWeek, 'Day:', GameState.currentDay);
+        console.log('Projects:', window.GameState.projects);
+        console.log('Week:', window.GameState.currentWeek, 'Day:', window.GameState.currentDay);
     });
 
     const resetBtn = document.getElementById('resetBtn');
@@ -858,7 +861,7 @@ function setupEventListeners() {
     initButtonAnimations();
 }
 
-function showSettingsModal() {
+    function showSettingsModal() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
         modal.style.display = 'flex';
@@ -869,32 +872,32 @@ function showSettingsModal() {
     }
 }
 
-function hideSettingsModal() {
+    function hideSettingsModal() {
     const modal = document.getElementById('settingsModal');
     if (modal) modal.style.display = 'none';
 }
 
-function showHelpModal() {
+    function showHelpModal() {
     const modal = document.getElementById('helpModal');
     if (modal) modal.style.display = 'flex';
 }
 
-function hideHelpModal() {
+    function hideHelpModal() {
     const modal = document.getElementById('helpModal');
     if (modal) modal.style.display = 'none';
 }
 
-function showCreditsModal() {
+    function showCreditsModal() {
     const modal = document.getElementById('creditsModal');
     if (modal) modal.style.display = 'flex';
 }
 
-function hideCreditsModal() {
+    function hideCreditsModal() {
     const modal = document.getElementById('creditsModal');
     if (modal) modal.style.display = 'none';
 }
 
-function showHighScoresModal() {
+    function showHighScoresModal() {
     const attempts = getGameAttempts();
     
     const modal = document.createElement('div');
@@ -955,12 +958,12 @@ function showHighScoresModal() {
     });
 }
 
-function getGameAttempts() {
+    function getGameAttempts() {
     const attemptsJson = localStorage.getItem('agencyChaosAttempts');
     return attemptsJson ? JSON.parse(attemptsJson) : [];
 }
 
-function saveGameAttempt(endReason, victoryPath, score, rank) {
+    function saveGameAttempt(endReason, victoryPath, score, rank) {
     const attempts = getGameAttempts();
     
     const attempt = {
@@ -969,13 +972,13 @@ function saveGameAttempt(endReason, victoryPath, score, rank) {
         victoryPath,
         score,
         rankTitle: rank,
-        weeks: GameState.currentWeek,
-        money: GameState.money,
-        projectsCompleted: GameState.gameStats.projectsCompleted,
-        avgSatisfaction: GameState.gameStats.projectsCompleted > 0 
-            ? Math.round(GameState.gameStats.totalSatisfactionPoints / GameState.gameStats.projectsCompleted) 
-            : 0,
-        teamMorale: GameState.teamMorale
+            weeks: window.GameState.currentWeek,
+            money: window.GameState.money,
+            projectsCompleted: window.GameState.gameStats.projectsCompleted,
+            avgSatisfaction: window.GameState.gameStats.projectsCompleted > 0 
+                ? Math.round(window.GameState.gameStats.totalSatisfactionPoints / window.GameState.gameStats.projectsCompleted) 
+                : 0,
+            teamMorale: window.GameState.teamMorale
     };
     
     attempts.unshift(attempt);
@@ -987,12 +990,12 @@ function saveGameAttempt(endReason, victoryPath, score, rank) {
     localStorage.setItem('agencyChaosAttempts', JSON.stringify(attempts));
 }
 
-function updateClock() {
-    if (typeof GameState.currentHour !== 'number') {
-        GameState.currentHour = 9;
-    }
-    
-    const hour = GameState.currentHour;
+    function updateClock() {
+        if (typeof window.GameState.currentHour !== 'number') {
+            window.GameState.currentHour = 9;
+        }
+        
+        const hour = window.GameState.currentHour;
     const isPM = hour >= 12;
     const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
     const period = isPM ? 'PM' : 'AM';
@@ -1013,22 +1016,92 @@ function updateClock() {
     }
 }
 
-function advanceClock() {
-    const clockElement = document.getElementById('gameClock');
-    if (clockElement) {
-        clockElement.classList.add('time-advance');
-        setTimeout(() => clockElement.classList.remove('time-advance'), 600);
+    function advanceClock() {
+        const clockElement = document.getElementById('gameClock');
+        if (clockElement) {
+            clockElement.classList.add('time-advance');
+            setTimeout(() => clockElement.classList.remove('time-advance'), 600);
+        }
+        
+        // Advance time by a few hours per day
+        const hoursToAdvance = 2 + Math.floor(Math.random() * 3); // 2-4 hours per day
+        window.GameState.currentHour = (window.GameState.currentHour + hoursToAdvance) % 24;
+        
+        // If we roll over midnight, reset to morning
+        if (window.GameState.currentHour < 7) {
+            window.GameState.currentHour = 9; // Reset to 9 AM for new day
+        }
+        
+        window.updateClock();
     }
-    
-    // Advance time by a few hours per day
-    const hoursToAdvance = 2 + Math.floor(Math.random() * 3); // 2-4 hours per day
-    GameState.currentHour = (GameState.currentHour + hoursToAdvance) % 24;
-    
-    // If we roll over midnight, reset to morning
-    if (GameState.currentHour < 7) {
-        GameState.currentHour = 9; // Reset to 9 AM for new day
-    }
-    
-    updateClock();
-}
+
+    return {
+        highlightTeamMemberCard,
+        showProjectCompletion,
+        showWeekSummary,
+        displayGameState,
+        displayProjects,
+        createProjectCard,
+        displayTeam,
+        createTeamMemberCard,
+        showAssignmentModal,
+        calculateAverageSatisfaction,
+        updateMainContent,
+        displayConversation,
+        showConsequenceFeedback,
+        animateResourceChange,
+        highlightProject,
+        updateNotificationBadge,
+        checkUnassignedProjectsWarning,
+        showResetConfirmModal,
+        viewSummary,
+        showEndGameScreen,
+        setupEventListeners,
+        showSettingsModal,
+        hideSettingsModal,
+        showHelpModal,
+        hideHelpModal,
+        showCreditsModal,
+        hideCreditsModal,
+        showHighScoresModal,
+        getGameAttempts,
+        saveGameAttempt,
+        updateClock,
+        advanceClock
+    };
+})();
+
+// Expose on window for backward compatibility
+window.highlightTeamMemberCard = UIModule.highlightTeamMemberCard;
+window.showProjectCompletion = UIModule.showProjectCompletion;
+window.showWeekSummary = UIModule.showWeekSummary;
+window.displayGameState = UIModule.displayGameState;
+window.displayProjects = UIModule.displayProjects;
+window.createProjectCard = UIModule.createProjectCard;
+window.displayTeam = UIModule.displayTeam;
+window.createTeamMemberCard = UIModule.createTeamMemberCard;
+window.showAssignmentModal = UIModule.showAssignmentModal;
+window.calculateAverageSatisfaction = UIModule.calculateAverageSatisfaction;
+window.updateMainContent = UIModule.updateMainContent;
+window.displayConversation = UIModule.displayConversation;
+window.showConsequenceFeedback = UIModule.showConsequenceFeedback;
+window.animateResourceChange = UIModule.animateResourceChange;
+window.highlightProject = UIModule.highlightProject;
+window.updateNotificationBadge = UIModule.updateNotificationBadge;
+window.checkUnassignedProjectsWarning = UIModule.checkUnassignedProjectsWarning;
+window.showResetConfirmModal = UIModule.showResetConfirmModal;
+window.viewSummary = UIModule.viewSummary;
+window.showEndGameScreen = UIModule.showEndGameScreen;
+window.setupEventListeners = UIModule.setupEventListeners;
+window.showSettingsModal = UIModule.showSettingsModal;
+window.hideSettingsModal = UIModule.hideSettingsModal;
+window.showHelpModal = UIModule.showHelpModal;
+window.hideHelpModal = UIModule.hideHelpModal;
+window.showCreditsModal = UIModule.showCreditsModal;
+window.hideCreditsModal = UIModule.hideCreditsModal;
+window.showHighScoresModal = UIModule.showHighScoresModal;
+window.getGameAttempts = UIModule.getGameAttempts;
+window.saveGameAttempt = UIModule.saveGameAttempt;
+window.updateClock = UIModule.updateClock;
+window.advanceClock = UIModule.advanceClock;
 

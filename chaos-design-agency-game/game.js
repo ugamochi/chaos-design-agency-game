@@ -1,239 +1,232 @@
 // Agency Chaos Simulator - Orchestration Logic
 
-async function loadJson(url) {
-    try {
-        const response = await fetch(url);
-        return await response.json();
-    } catch (error) {
-        console.error(`Error loading ${url}:`, error);
-        return [];
-    }
-}
+const GameModule = (function() {
+    'use strict';
 
-async function initGame() {
-    setAllConversations(await loadJson('conversations.json'));
-    setAllTeamMembers(await loadJson('characters.json'));
-    setAllProjectTemplates(await loadJson('projects.json'));
+    async function initGame() {
+        window.setAllConversations(await Utils.loadJson('conversations.json'));
+        window.setAllTeamMembers(await Utils.loadJson('characters.json'));
+        window.setAllProjectTemplates(await Utils.loadJson('projects.json'));
 
-    console.log('Loaded conversations:', AllConversations.length);
-    console.log('Loaded team members:', AllTeamMembers.length);
-    console.log('Loaded project templates:', AllProjectTemplates.length);
+        console.log('Loaded conversations:', window.AllConversations.length);
+        console.log('Loaded team members:', window.AllTeamMembers.length);
+        console.log('Loaded project templates:', window.AllProjectTemplates.length);
 
-    const savedState = localStorage.getItem('agencyChaosState');
-    if (savedState) {
-        try {
-            const parsed = JSON.parse(savedState);
-            Object.assign(GameState, parsed);
-            
-            if (!GameState.keyMoments) GameState.keyMoments = [];
-            if (!GameState.gameStats) {
-                GameState.gameStats = {
-                    projectsCompleted: 0,
-                    projectsFailed: 0,
-                    scopeCreepHandled: 0,
-                    teamMemberQuits: 0,
-                    deadlinesMissed: 0,
-                    perfectDeliveries: 0,
-                    totalSatisfactionPoints: 0,
-                    highestMorale: GameState.teamMorale || 75,
-                    lowestMorale: GameState.teamMorale || 75
-                };
+        const savedState = localStorage.getItem('agencyChaosState');
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                Object.assign(window.GameState, parsed);
+                
+                if (!window.GameState.keyMoments) window.GameState.keyMoments = [];
+                if (!window.GameState.gameStats) {
+                    window.GameState.gameStats = {
+                        projectsCompleted: 0,
+                        projectsFailed: 0,
+                        scopeCreepHandled: 0,
+                        teamMemberQuits: 0,
+                        deadlinesMissed: 0,
+                        perfectDeliveries: 0,
+                        totalSatisfactionPoints: 0,
+                        highestMorale: window.GameState.teamMorale || 75,
+                        lowestMorale: window.GameState.teamMorale || 75
+                    };
+                }
+                if (!window.GameState.gamePhase) window.GameState.gamePhase = 'tutorial';
+                if (typeof window.GameState.gameOver !== 'boolean') window.GameState.gameOver = false;
+                if (window.GameState.victoryPath === undefined) window.GameState.victoryPath = null;
+                
+                console.log('Game state loaded from localStorage');
+            } catch (error) {
+                console.error('Error loading saved state:', error);
+                window.resetToDefaultState();
             }
-            if (!GameState.gamePhase) GameState.gamePhase = 'tutorial';
-            if (typeof GameState.gameOver !== 'boolean') GameState.gameOver = false;
-            if (GameState.victoryPath === undefined) GameState.victoryPath = null;
-            
-            console.log('Game state loaded from localStorage');
-        } catch (error) {
-            console.error('Error loading saved state:', error);
-            resetToDefaultState();
+        } else {
+            window.resetToDefaultState();
         }
-    } else {
-        resetToDefaultState();
-    }
 
-    if (GameState.projects.length > 0) {
-        GameState.projects = GameState.projects.map(project => hydrateProject(project));
-    }
-
-    if (GameState.team.length === 0 && AllTeamMembers.length > 0) {
-        GameState.team = AllTeamMembers.map(member => ({
-            ...member,
-            currentAssignment: null,
-            daysOnAssignment: 0,
-            lowMoraleTriggered: false,
-            highMoraleTriggered: false,
-            hours: 8
-        }));
-    }
-    
-    GameState.team.forEach(member => {
-        if (member.hours === undefined || member.hours === null) {
-            member.hours = 8;
+        if (window.GameState.projects.length > 0) {
+            window.GameState.projects = window.GameState.projects.map(project => window.hydrateProject(project));
         }
-    });
 
-    if (GameState.projects.length === 0) {
-        seedInitialProjects();
+        if (window.GameState.team.length === 0 && window.AllTeamMembers.length > 0) {
+            window.GameState.team = window.AllTeamMembers.map(member => ({
+                ...member,
+                currentAssignment: null,
+                daysOnAssignment: 0,
+                lowMoraleTriggered: false,
+                highMoraleTriggered: false,
+                hours: 8
+            }));
+        }
+        
+        window.GameState.team.forEach(member => {
+            if (member.hours === undefined || member.hours === null) {
+                member.hours = 8;
+            }
+        });
+
+        if (window.GameState.projects.length === 0) {
+            seedInitialProjects();
+        }
+
+        window.GameState.projects.forEach(project => window.updateProjectSatisfaction(project));
+
+        window.checkForConversations();
+        window.displayGameState();
+        window.setupEventListeners();
+        window.initTutorial();
     }
 
-    GameState.projects.forEach(project => updateProjectSatisfaction(project));
+    function seedInitialProjects() {
+        const techcorpTemplate = window.AllProjectTemplates.find(t => t.id === 'techcorp_web');
+        const startupxTemplate = window.AllProjectTemplates.find(t => t.id === 'startupx_branding');
 
-    checkForConversations();
-    displayGameState();
-    setupEventListeners();
-    initTutorial();
-}
-
-function seedInitialProjects() {
-    const techcorpTemplate = AllProjectTemplates.find(t => t.id === 'techcorp_web');
-    const startupxTemplate = AllProjectTemplates.find(t => t.id === 'startupx_branding');
-
-    GameState.projects = [
-        buildProjectFromTemplate(techcorpTemplate || {}, {
-            id: 'proj-001',
-            progress: 0.6,
-            weeksRemaining: techcorpTemplate?.totalWeeks || 7
-        }),
-        buildProjectFromTemplate(startupxTemplate || {}, {
-            id: 'proj-002',
-            progress: 0.3,
-            weeksRemaining: startupxTemplate?.totalWeeks || 9
-        })
-    ].map(project => hydrateProject(project));
-}
-
-function advanceDay() {
-    if (currentConversation !== null) {
-        pulseElement('.conversation-container');
-        showWarningToast('⏸️ Please respond to the active conversation before advancing time', 3000);
-        return;
-    }
-    
-    if (GameState.gameOver) {
-        return;
+        window.GameState.projects = [
+            window.buildProjectFromTemplate(techcorpTemplate || {}, {
+                id: 'proj-001',
+                progress: 0.6,
+                weeksRemaining: techcorpTemplate?.totalWeeks || 7
+            }),
+            window.buildProjectFromTemplate(startupxTemplate || {}, {
+                id: 'proj-002',
+                progress: 0.3,
+                weeksRemaining: startupxTemplate?.totalWeeks || 9
+            })
+        ].map(project => window.hydrateProject(project));
     }
 
-    const feedbackElement = document.getElementById('currentConsequenceFeedback');
-    if (feedbackElement) {
-        feedbackElement.classList.add('fade-out');
-        setTimeout(() => feedbackElement.remove(), 300);
-    }
-
-    GameState.currentDay++;
-    advanceClock();
-    
-    resetDailyHours();
-
-    if (GameState.currentDay > 7) {
-        GameState.currentDay = 1;
-        GameState.currentWeek++;
-        GameState.currentHour = 9; // Reset to 9 AM on new week
-
-        if (GameState.currentWeek > 12) {
-            handleGameEnd('victory');
+    function advanceDay() {
+        if (window.currentConversation !== null) {
+            window.pulseElement('.conversation-container');
+            window.showWarningToast('⏸️ Please respond to the active conversation before advancing time', 3000);
+            return;
+        }
+        
+        if (window.GameState.gameOver) {
             return;
         }
 
-        updateGamePhase();
-        triggerScriptedEvents();
+        const feedbackElement = document.getElementById('currentConsequenceFeedback');
+        if (feedbackElement) {
+            feedbackElement.classList.add('fade-out');
+            setTimeout(() => feedbackElement.remove(), 300);
+        }
+
+        window.GameState.currentDay++;
+        window.advanceClock();
+        
+        resetDailyHours();
+
+        if (window.GameState.currentDay > 7) {
+            window.GameState.currentDay = 1;
+            window.GameState.currentWeek++;
+            window.GameState.currentHour = 9; // Reset to 9 AM on new week
+
+            if (window.GameState.currentWeek > 12) {
+                handleGameEnd('victory');
+                return;
+            }
+
+            updateGamePhase();
+            triggerScriptedEvents();
+        }
+
+        window.purgeDeferredConversations();
+
+        window.checkForIllness();
+        window.updateTeamMorale();
+        window.updateProjects();
+        window.checkTeamEvents();
+        checkFailureConditions();
+        window.checkForConversations();
+        window.checkForContextualTips();
+
+        if (window.GameState.currentDay === 7) {
+            window.checkTeamPulse();
+            processWeeklyCosts();
+            setTimeout(() => window.showWeekSummary(), 500);
+            window.generateWeeklyClientFeedback();
+        }
+
+        window.checkProjectDeadlines();
+        updateGameStats();
+        window.displayGameState();
+        window.saveState();
+
+        console.log(`Day advanced: Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`);
     }
 
-    purgeDeferredConversations();
-
-    checkForIllness();
-    updateTeamMorale();
-    updateProjects();
-    checkTeamEvents();
-    checkFailureConditions();
-    checkForConversations();
-    checkForContextualTips();
-
-    if (GameState.currentDay === 7) {
-        checkTeamPulse();
-        processWeeklyCosts();
-        setTimeout(() => showWeekSummary(), 500);
-        generateWeeklyClientFeedback();
+    function updateGamePhase() {
+        if (window.GameState.currentWeek <= 2) {
+            window.GameState.gamePhase = 'tutorial';
+        } else if (window.GameState.currentWeek <= 5) {
+            window.GameState.gamePhase = 'early';
+        } else if (window.GameState.currentWeek <= 9) {
+            window.GameState.gamePhase = 'mid';
+        } else {
+            window.GameState.gamePhase = 'late';
+        }
     }
 
-    checkProjectDeadlines();
-    updateGameStats();
-    displayGameState();
-    saveState();
-
-    console.log(`Day advanced: Week ${GameState.currentWeek}, Day ${GameState.currentDay}`);
-}
-
-function updateGamePhase() {
-    if (GameState.currentWeek <= 2) {
-        GameState.gamePhase = 'tutorial';
-    } else if (GameState.currentWeek <= 5) {
-        GameState.gamePhase = 'early';
-    } else if (GameState.currentWeek <= 9) {
-        GameState.gamePhase = 'mid';
-    } else {
-        GameState.gamePhase = 'late';
-    }
-}
-
-function triggerScriptedEvents() {
-    if (GameState.currentWeek === 3 && GameState.currentDay === 1) {
-        recordKeyMoment('Early Growing Pains', 'First real test of agency management', 'milestone');
-    }
-    
-    if (GameState.currentWeek === 5 && GameState.currentDay === 1) {
-        recordKeyMoment('Mid-Point Push', 'Halfway through the gauntlet', 'milestone');
-    }
-    
-    if (GameState.currentWeek === 10 && GameState.currentDay === 1) {
-        recordKeyMoment('Final Stretch', 'The home stretch begins', 'milestone');
-    }
-}
-
-function checkFailureConditions() {
-    if (GameState.money < -5000) {
-        handleGameEnd('bankruptcy');
-        return true;
+    function triggerScriptedEvents() {
+        if (window.GameState.currentWeek === 3 && window.GameState.currentDay === 1) {
+            window.recordKeyMoment('Early Growing Pains', 'First real test of agency management', 'milestone');
+        }
+        
+        if (window.GameState.currentWeek === 5 && window.GameState.currentDay === 1) {
+            window.recordKeyMoment('Mid-Point Push', 'Halfway through the gauntlet', 'milestone');
+        }
+        
+        if (window.GameState.currentWeek === 10 && window.GameState.currentDay === 1) {
+            window.recordKeyMoment('Final Stretch', 'The home stretch begins', 'milestone');
+        }
     }
 
-    const activeMembersCount = GameState.team.filter(m => 
-        m.id !== 'player' && m.morale.current >= 10
-    ).length;
-    
-    if (activeMembersCount === 0 && GameState.team.length > 1) {
-        handleGameEnd('team_quit');
-        return true;
+    function checkFailureConditions() {
+        if (window.GameState.money < -5000) {
+            handleGameEnd('bankruptcy');
+            return true;
+        }
+
+        const activeMembersCount = window.GameState.team.filter(m => 
+            m.id !== 'player' && m.morale.current >= 10
+        ).length;
+        
+        if (activeMembersCount === 0 && window.GameState.team.length > 1) {
+            handleGameEnd('team_quit');
+            return true;
+        }
+
+        const teamBurnout = window.GameState.team.filter(m => 
+            m.id !== 'player' && m.morale.current < 10
+        ).length;
+        
+        if (teamBurnout >= Math.max(2, window.GameState.team.length - 1)) {
+            handleGameEnd('burnout');
+            return true;
+        }
+
+        return false;
     }
 
-    const teamBurnout = GameState.team.filter(m => 
-        m.id !== 'player' && m.morale.current < 10
-    ).length;
-    
-    if (teamBurnout >= Math.max(2, GameState.team.length - 1)) {
-        handleGameEnd('burnout');
-        return true;
+    function updateGameStats() {
+        if (window.GameState.teamMorale > window.GameState.gameStats.highestMorale) {
+            window.GameState.gameStats.highestMorale = window.GameState.teamMorale;
+        }
+        if (window.GameState.teamMorale < window.GameState.gameStats.lowestMorale) {
+            window.GameState.gameStats.lowestMorale = window.GameState.teamMorale;
+        }
     }
 
-    return false;
-}
-
-function updateGameStats() {
-    if (GameState.teamMorale > GameState.gameStats.highestMorale) {
-        GameState.gameStats.highestMorale = GameState.teamMorale;
-    }
-    if (GameState.teamMorale < GameState.gameStats.lowestMorale) {
-        GameState.gameStats.lowestMorale = GameState.teamMorale;
-    }
-}
-
-function calculateVictoryPath() {
-    const stats = GameState.gameStats;
-    const completedProjects = stats.projectsCompleted;
-    const money = GameState.money;
-    const avgSatisfaction = completedProjects > 0 
-        ? stats.totalSatisfactionPoints / completedProjects 
-        : 0;
-    const morale = GameState.teamMorale;
+    function calculateVictoryPath() {
+        const stats = window.GameState.gameStats;
+        const completedProjects = stats.projectsCompleted;
+        const money = window.GameState.money;
+        const avgSatisfaction = completedProjects > 0 
+            ? stats.totalSatisfactionPoints / completedProjects 
+            : 0;
+        const morale = window.GameState.teamMorale;
 
     if (completedProjects >= 5 && money >= 25000 && avgSatisfaction >= 75 && morale >= 70) {
         return 'rockstar';
@@ -250,29 +243,29 @@ function calculateVictoryPath() {
     return 'struggled';
 }
 
-function calculateScore() {
-    const stats = GameState.gameStats;
-    let score = 0;
+    function calculateScore() {
+        const stats = window.GameState.gameStats;
+        let score = 0;
 
-    score += stats.projectsCompleted * 1000;
-    score += Math.max(0, GameState.money) / 10;
-    score += (stats.totalSatisfactionPoints / Math.max(1, stats.projectsCompleted)) * 10;
-    score += GameState.teamMorale * 5;
-    
-    score += stats.perfectDeliveries * 500;
-    score += stats.scopeCreepHandled * 200;
-    
-    score -= stats.projectsFailed * 800;
-    score -= stats.deadlinesMissed * 400;
-    score -= stats.teamMemberQuits * 600;
+        score += stats.projectsCompleted * 1000;
+        score += Math.max(0, window.GameState.money) / 10;
+        score += (stats.totalSatisfactionPoints / Math.max(1, stats.projectsCompleted)) * 10;
+        score += window.GameState.teamMorale * 5;
+        
+        score += stats.perfectDeliveries * 500;
+        score += stats.scopeCreepHandled * 200;
+        
+        score -= stats.projectsFailed * 800;
+        score -= stats.deadlinesMissed * 400;
+        score -= stats.teamMemberQuits * 600;
 
-    const weekBonus = (12 - GameState.currentWeek) * 100;
-    score += Math.max(0, weekBonus);
+        const weekBonus = (12 - window.GameState.currentWeek) * 100;
+        score += Math.max(0, weekBonus);
 
-    return Math.round(Math.max(0, score));
-}
+        return Math.round(Math.max(0, score));
+    }
 
-function getRankTitle(victoryPath, score) {
+    function getRankTitle(victoryPath, score) {
     if (victoryPath === 'rockstar') {
         if (score >= 50000) return '🌟 Agency Legend';
         if (score >= 40000) return '🎯 Master Director';
@@ -294,7 +287,7 @@ function getRankTitle(victoryPath, score) {
     return '📉 Struggling Startup';
 }
 
-function getEndGameMessage(endReason, victoryPath) {
+    function getEndGameMessage(endReason, victoryPath) {
     if (endReason === 'bankruptcy') {
         return 'The agency ran out of money. Sometimes the best lessons come from failure. Try managing your budget more carefully next time!';
     }
@@ -322,55 +315,89 @@ function getEndGameMessage(endReason, victoryPath) {
     return 'You struggled through, but didn\'t quite hit the mark. Every agency has rough patches - learn from this and come back stronger!';
 }
 
-function processWeeklyCosts() {
-    const teamSize = GameState.team.filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false)).length;
-    const weeklyCosts = teamSize * 600 + 300;
-    
-    GameState.money -= weeklyCosts;
-    
-    GameState.conversationHistory.push({
-        title: 'Weekly Costs',
-        message: `Payroll and overhead: -$${weeklyCosts.toLocaleString()}`,
-        type: 'info',
-        timestamp: `Week ${GameState.currentWeek}`
-    });
-    
-    if (GameState.money < 1000 && GameState.money > 0) {
-        recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
+    function processWeeklyCosts() {
+        const teamSize = window.GameState.team.filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false)).length;
+        const weeklyCosts = teamSize * 600 + 300;
+        
+        window.GameState.money -= weeklyCosts;
+        
+        window.GameState.conversationHistory.push({
+            title: 'Weekly Costs',
+            message: `Payroll and overhead: -$${weeklyCosts.toLocaleString()}`,
+            type: 'info',
+            timestamp: `Week ${window.GameState.currentWeek}`
+        });
+        
+        if (window.GameState.money < 1000 && window.GameState.money > 0) {
+            window.recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
+        }
     }
-}
 
-function resetDailyHours() {
-    GameState.team.forEach(member => {
-        member.hours = 8;
-    });
-}
-
-function handleGameEnd(endReason = 'victory') {
-    GameState.gameOver = true;
-    
-    if (endReason === 'victory') {
-        recordKeyMoment('12 Weeks Complete!', 'Finished the full agency simulation', 'victory');
-        GameState.victoryPath = calculateVictoryPath();
-        celebrateVictory(GameState.victoryPath);
-    } else {
-        GameState.victoryPath = 'failed';
-        screenShake('heavy');
+    function resetDailyHours() {
+        window.GameState.team.forEach(member => {
+            member.hours = 8;
+        });
     }
-    
-    const score = calculateScore();
-    const rank = getRankTitle(GameState.victoryPath, score);
-    const message = getEndGameMessage(endReason, GameState.victoryPath);
-    
-    saveGameAttempt(endReason, GameState.victoryPath, score, rank);
-    
-    setTimeout(() => {
-        showEndGameScreen(endReason, GameState.victoryPath, score, rank, message);
-    }, 500);
-    
-    saveState();
-}
+
+    function handleGameEnd(endReason = 'victory') {
+        window.GameState.gameOver = true;
+        
+        if (endReason === 'victory') {
+            window.recordKeyMoment('12 Weeks Complete!', 'Finished the full agency simulation', 'victory');
+            window.GameState.victoryPath = calculateVictoryPath();
+            window.celebrateVictory(window.GameState.victoryPath);
+        } else {
+            window.GameState.victoryPath = 'failed';
+            window.screenShake('heavy');
+        }
+        
+        const score = calculateScore();
+        const rank = getRankTitle(window.GameState.victoryPath, score);
+        const message = getEndGameMessage(endReason, window.GameState.victoryPath);
+        
+        window.saveGameAttempt(endReason, window.GameState.victoryPath, score, rank);
+        
+        setTimeout(() => {
+            window.showEndGameScreen(endReason, window.GameState.victoryPath, score, rank, message);
+        }, 500);
+        
+        window.saveState();
+    }
+
+    return {
+        initGame,
+        advanceDay,
+        seedInitialProjects,
+        updateGamePhase,
+        triggerScriptedEvents,
+        checkFailureConditions,
+        updateGameStats,
+        calculateVictoryPath,
+        calculateScore,
+        getRankTitle,
+        getEndGameMessage,
+        processWeeklyCosts,
+        resetDailyHours,
+        handleGameEnd
+    };
+})();
+
+// Expose on window for backward compatibility
+window.initGame = GameModule.initGame;
+window.advanceDay = GameModule.advanceDay;
+window.seedInitialProjects = GameModule.seedInitialProjects;
+window.updateGamePhase = GameModule.updateGamePhase;
+window.triggerScriptedEvents = GameModule.triggerScriptedEvents;
+window.checkFailureConditions = GameModule.checkFailureConditions;
+window.updateGameStats = GameModule.updateGameStats;
+window.calculateVictoryPath = GameModule.calculateVictoryPath;
+window.calculateScore = GameModule.calculateScore;
+window.getRankTitle = GameModule.getRankTitle;
+window.getEndGameMessage = GameModule.getEndGameMessage;
+window.processWeeklyCosts = GameModule.processWeeklyCosts;
+window.resetDailyHours = GameModule.resetDailyHours;
+window.handleGameEnd = GameModule.handleGameEnd;
 
 document.addEventListener('DOMContentLoaded', () => {
-    initGame();
+    GameModule.initGame();
 });
