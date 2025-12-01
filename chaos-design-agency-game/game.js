@@ -50,21 +50,28 @@ const GameModule = (function() {
         }
 
         if (window.GameState.team.length === 0 && window.AllTeamMembers.length > 0) {
-            window.GameState.team = window.AllTeamMembers.map(member => ({
-                ...member,
-                currentAssignment: null,
-                daysOnAssignment: 0,
-                lowMoraleTriggered: false,
-                highMoraleTriggered: false,
-                hours: 8
-            }));
+            initializeRandomTeam();
         }
         
         window.GameState.team.forEach(member => {
             if (member.hours === undefined || member.hours === null) {
-                member.hours = 8;
+                member.hours = 40;
+            }
+            if (member.id === 'player' && (member.burnout === undefined || member.burnout === null)) {
+                member.burnout = 0;
+            }
+            if (member.hoursWorkedToday !== undefined) {
+                member.hoursWorkedThisWeek = member.hoursWorkedToday || 0;
+                delete member.hoursWorkedToday;
+            }
+            if (member.hoursWorkedThisWeek === undefined) {
+                member.hoursWorkedThisWeek = 0;
             }
         });
+        
+        if (window.GameState.currentDay === 1) {
+            resetWeeklyHours();
+        }
 
         if (window.GameState.projects.length === 0) {
             seedInitialProjects();
@@ -72,26 +79,125 @@ const GameModule = (function() {
 
         window.GameState.projects.forEach(project => window.updateProjectSatisfaction(project));
 
+        window.currentConversation = null;
+        window.selectedChoiceId = null;
+        window.currentConversationStartTime = null;
+        window.currentConversationMeta = null;
+
         window.checkForConversations();
         window.displayGameState();
         window.setupEventListeners();
         window.initTutorial();
     }
 
+    function initializeRandomTeam() {
+        const allMembers = window.AllTeamMembers || [];
+        const player = allMembers.find(m => m.id === 'player');
+        const availableWorkers = allMembers.filter(m => m.id !== 'player');
+        
+        if (availableWorkers.length === 0) {
+            window.GameState.team = player ? [{
+                ...player,
+                currentAssignment: null,
+                daysOnAssignment: 0,
+                lowMoraleTriggered: false,
+                highMoraleTriggered: false,
+                hours: 40,
+                hoursWorkedThisWeek: 0,
+                burnout: 0,
+                isIll: false,
+                hasQuit: false
+            }] : [];
+            return;
+        }
+        
+        const managers = availableWorkers.filter(m => m.role && m.role.toLowerCase() === 'manager');
+        const nonManagers = availableWorkers.filter(m => !m.role || m.role.toLowerCase() !== 'manager');
+        
+        const team = [];
+        if (player) {
+            team.push({
+                ...player,
+                currentAssignment: null,
+                daysOnAssignment: 0,
+                lowMoraleTriggered: false,
+                highMoraleTriggered: false,
+                hours: 40,
+                hoursWorkedThisWeek: 0,
+                burnout: 0,
+                isIll: false,
+                hasQuit: false
+            });
+        }
+        
+        if (managers.length > 0) {
+            const shuffledManagers = [...managers].sort(() => Math.random() - 0.5);
+            const selectedManager = shuffledManagers[0];
+            team.push({
+                ...selectedManager,
+                currentAssignment: null,
+                daysOnAssignment: 0,
+                lowMoraleTriggered: false,
+                highMoraleTriggered: false,
+                hours: 40,
+                hoursWorkedThisWeek: 0,
+                burnout: undefined,
+                isIll: false,
+                hasQuit: false
+            });
+        }
+        
+        const remainingSlots = 4 - team.length;
+        if (remainingSlots > 0 && nonManagers.length > 0) {
+            const shuffledNonManagers = [...nonManagers].sort(() => Math.random() - 0.5);
+            const numToSelect = Math.min(remainingSlots, nonManagers.length);
+            const selectedWorkers = shuffledNonManagers.slice(0, numToSelect);
+            
+            selectedWorkers.forEach(member => {
+                team.push({
+                    ...member,
+                    currentAssignment: null,
+                    daysOnAssignment: 0,
+                    lowMoraleTriggered: false,
+                    highMoraleTriggered: false,
+                    hours: 40,
+                    hoursWorkedThisWeek: 0,
+                    burnout: undefined,
+                    isIll: false,
+                    hasQuit: false
+                });
+            });
+        }
+        
+        window.GameState.team = team;
+        
+        const Logger = window.Logger || console;
+        Logger.log(`Initialized team with ${team.length} members:`, team.map(m => m.name).join(', '));
+    }
+
     function seedInitialProjects() {
-        const techcorpTemplate = window.AllProjectTemplates.find(t => t.id === 'techcorp_web');
-        const startupxTemplate = window.AllProjectTemplates.find(t => t.id === 'startupx_branding');
+        const techcorpTemplate = Array.isArray(window.AllProjectTemplates) 
+            ? window.AllProjectTemplates.find(t => t && t.id === 'techcorp_web')
+            : null;
+        const startupxTemplate = Array.isArray(window.AllProjectTemplates)
+            ? window.AllProjectTemplates.find(t => t && t.id === 'startupx_branding')
+            : null;
+
+        const techcorpWeeks = techcorpTemplate?.totalWeeks || 7;
+        const startupxWeeks = startupxTemplate?.totalWeeks || 9;
 
         window.GameState.projects = [
             window.buildProjectFromTemplate(techcorpTemplate || {}, {
                 id: 'proj-001',
                 progress: 0.6,
-                weeksRemaining: techcorpTemplate?.totalWeeks || 7
+                totalWeeks: techcorpWeeks,
+                weeksRemaining: techcorpWeeks
             }),
             window.buildProjectFromTemplate(startupxTemplate || {}, {
                 id: 'proj-002',
                 progress: 0.3,
-                weeksRemaining: startupxTemplate?.totalWeeks || 9
+                totalWeeks: startupxWeeks,
+                weeksRemaining: startupxWeeks
             })
         ].map(project => window.hydrateProject(project));
     }
@@ -115,8 +221,6 @@ const GameModule = (function() {
 
         window.GameState.currentDay++;
         window.advanceClock();
-        
-        resetDailyHours();
 
         if (window.GameState.currentDay > 7) {
             window.GameState.currentDay = 1;
@@ -134,24 +238,42 @@ const GameModule = (function() {
 
         window.purgeDeferredConversations();
 
+        const previousWeek = window.GameState.currentWeek - (window.GameState.currentDay === 1 ? 1 : 0);
+        const isNewWeek = window.GameState.currentDay === 1;
+        
+        if (isNewWeek) {
+            resetWeeklyHours();
+        } else {
+            resetDailyHours();
+        }
+        
         window.checkForIllness();
-        window.updateTeamMorale();
+        
         window.updateProjects();
+        window.updatePlayerBurnout();
+        window.updateTeamMorale();
+        
+        window.displayGameState();
         window.checkTeamEvents();
         checkFailureConditions();
+        window.checkConditionalConversations();
         window.checkForConversations();
         window.checkForContextualTips();
 
         if (window.GameState.currentDay === 7) {
             window.checkTeamPulse();
-            processWeeklyCosts();
+            processWeeklyCosts(); // Keep for backward compatibility
             setTimeout(() => window.showWeekSummary(), 500);
             window.generateWeeklyClientFeedback();
+        }
+        
+        // Process monthly salaries at the start of each new month (day 1 of weeks 1, 5, 9)
+        if (window.GameState.currentDay === 1) {
+            processMonthlySalaries();
         }
 
         window.checkProjectDeadlines();
         updateGameStats();
-        window.displayGameState();
         window.saveState();
 
         console.log(`Day advanced: Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`);
@@ -186,6 +308,12 @@ const GameModule = (function() {
     function checkFailureConditions() {
         if (window.GameState.money < -5000) {
             handleGameEnd('bankruptcy');
+            return true;
+        }
+
+        const player = window.GameState.team.find(m => m.id === 'player');
+        if (player && (player.burnout || 0) >= 100) {
+            handleGameEnd('player_burnout');
             return true;
         }
 
@@ -292,6 +420,10 @@ const GameModule = (function() {
         return 'The agency ran out of money. Sometimes the best lessons come from failure. Try managing your budget more carefully next time!';
     }
     
+    if (endReason === 'player_burnout') {
+        return 'You\'ve reached complete burnout. You can\'t keep pushing yourself indefinitely - rest and recovery are essential. Take better care of yourself next time!';
+    }
+    
     if (endReason === 'team_quit') {
         return 'Your entire team quit. Remember: happy team, happy agency. Pay attention to morale and don\'t overwork your people!';
     }
@@ -316,26 +448,63 @@ const GameModule = (function() {
 }
 
     function processWeeklyCosts() {
-        const teamSize = window.GameState.team.filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false)).length;
-        const weeklyCosts = teamSize * 600 + 300;
+        // Keep for backward compatibility, but now we use monthly salaries
+        // This function is deprecated but kept to avoid breaking changes
+    }
+
+    function processMonthlySalaries() {
+        // Pay salaries starting from week 5, then every 4 weeks (weeks 5, 9)
+        // Calculate which payroll period we're in (0 = week 5, 1 = week 9, etc.)
+        const payrollPeriod = window.GameState.currentWeek >= 5 
+            ? Math.floor((window.GameState.currentWeek - 5) / window.GameConstants.WEEKS_PER_MONTH)
+            : -1;
+        const lastPayrollPeriod = window.GameState.lastSalaryMonth || -1;
         
-        window.GameState.money -= weeklyCosts;
-        
-        window.GameState.conversationHistory.push({
-            title: 'Weekly Costs',
-            message: `Payroll and overhead: -$${weeklyCosts.toLocaleString()}`,
-            type: 'info',
-            timestamp: `Week ${window.GameState.currentWeek}`
-        });
-        
-        if (window.GameState.money < 1000 && window.GameState.money > 0) {
-            window.recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
+        // Pay salaries at the start of each payroll period (weeks 5, 9) on day 1
+        // Skip if we're before week 5
+        if (payrollPeriod >= 0 && payrollPeriod > lastPayrollPeriod && window.GameState.currentDay === 1) {
+            const teamSize = window.GameState.team.filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false)).length;
+            const monthlySalary = teamSize * window.GameConstants.MONTHLY_SALARY_PER_MEMBER;
+            const monthlyOverhead = window.GameConstants.MONTHLY_OVERHEAD;
+            const totalMonthlyCosts = monthlySalary + monthlyOverhead;
+            
+            window.GameState.money -= totalMonthlyCosts;
+            window.GameState.lastSalaryMonth = payrollPeriod;
+            
+            const employeeNames = window.GameState.team
+                .filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false))
+                .map(m => m.name)
+                .join(', ');
+            
+            window.GameState.conversationHistory.push({
+                title: 'Monthly Payroll',
+                message: `Salaries paid: ${employeeNames ? `-$${monthlySalary.toLocaleString()} (${employeeNames})` : 'No employees'}\nOverhead: -$${monthlyOverhead.toLocaleString()}\nTotal: -$${totalMonthlyCosts.toLocaleString()}`,
+                type: 'info',
+                timestamp: `Week ${window.GameState.currentWeek}, Payroll Period ${payrollPeriod + 1}`
+            });
+            
+            if (window.GameState.money < 1000 && window.GameState.money > 0) {
+                window.recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
+            }
+            
+            if (totalMonthlyCosts > 0) {
+                window.showWarningToast(`💰 Monthly payroll: -$${totalMonthlyCosts.toLocaleString()}`, 4000);
+            }
         }
     }
 
+    function resetWeeklyHours() {
+        window.GameState.team.forEach(member => {
+            const previousWeekDeficit = member.hours < 0 ? member.hours : 0;
+            member.hours = 40 + previousWeekDeficit;
+            member.hoursWorkedThisWeek = 0;
+            member._hoursDeductedToday = false;
+        });
+    }
+    
     function resetDailyHours() {
         window.GameState.team.forEach(member => {
-            member.hours = 8;
+            member._hoursDeductedToday = false;
         });
     }
 
@@ -377,6 +546,7 @@ const GameModule = (function() {
         getRankTitle,
         getEndGameMessage,
         processWeeklyCosts,
+        processMonthlySalaries,
         resetDailyHours,
         handleGameEnd
     };
@@ -395,7 +565,9 @@ window.calculateScore = GameModule.calculateScore;
 window.getRankTitle = GameModule.getRankTitle;
 window.getEndGameMessage = GameModule.getEndGameMessage;
 window.processWeeklyCosts = GameModule.processWeeklyCosts;
+window.processMonthlySalaries = GameModule.processMonthlySalaries;
 window.resetDailyHours = GameModule.resetDailyHours;
+window.resetWeeklyHours = GameModule.resetWeeklyHours;
 window.handleGameEnd = GameModule.handleGameEnd;
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -28,9 +28,17 @@
   },
   {
     "id": "mike_designer",
-    "name": "Mike",
+    "name": "Tanue",
     "role": "Designer",
     "skill": 4,
+    "bio": "Perfectionist designer who never ships anything on time but the quality is always worth the wait. Lives on coffee and pixel-perfect details.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 0.8,
+      "qualityMultiplier": 1.2
+    },
     "personality": {
       "type": "perfectionist",
       "traits": ["slow", "high_quality", "sensitive_to_criticism"],
@@ -57,9 +65,17 @@
   },
   {
     "id": "sarah_developer",
-    "name": "Sarah",
+    "name": "Pasha",
     "role": "Developer",
     "skill": 4,
+    "bio": "Pragmatic developer who gets things done fast. Prefers working alone and isn't afraid to suggest cutting scope when deadlines are tight.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": true,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.2,
+      "qualityMultiplier": 0.9
+    },
     "personality": {
       "type": "pragmatic",
       "traits": ["fast", "practical", "low_ego", "independent"],
@@ -86,9 +102,17 @@
   },
   {
     "id": "alex_junior",
-    "name": "Alex",
-    "role": "Junior Designer",
+    "name": "Sasha",
+    "role": "Manager",
     "skill": 2,
+    "bio": "Eager junior manager still learning the ropes. Makes mistakes but brings fresh ideas. Needs encouragement and guidance.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.0,
+      "qualityMultiplier": 0.8
+    },
     "personality": {
       "type": "eager",
       "traits": ["inconsistent", "needs_guidance", "creative_ideas"],
@@ -111,6 +135,298 @@
       "neutral": ["Working on it", "Hope this is right"],
       "stressed": ["I'm not sure about this", "Can someone help?"],
       "burned_out": ["I feel lost", "I don't think I'm good enough"]
+    }
+  },
+  {
+    "id": "pasha_manager",
+    "name": "Pasha",
+    "role": "Manager",
+    "skill": 3,
+    "bio": "Organized manager who keeps everything running smoothly. Stays calm under pressure and handles stress like a pro.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": true,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.1,
+      "qualityMultiplier": 1.0
+    },
+    "personality": {
+      "type": "pragmatic",
+      "traits": ["organized", "efficient", "calm_under_pressure"],
+      "quirks": ["good_at_planning", "handles_stress_well"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -4,
+        "praised": 8,
+        "criticized": -10,
+        "challenging_work": 5
+      }
+    },
+    "dialogue": {
+      "happy": ["Things are running smoothly", "We're on track"],
+      "neutral": ["Managing the workflow", "Keeping organized"],
+      "stressed": ["This is getting tight", "Need to prioritize"],
+      "burned_out": ["Too much to handle", "Need support"]
+    }
+  },
+  {
+    "id": "nikita_designer",
+    "name": "Nikita",
+    "role": "Designer",
+    "skill": 4,
+    "bio": "Creative designer with an eye for typography and detail. Loves collaborating but has perfectionist tendencies that can slow things down.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 0.9,
+      "qualityMultiplier": 1.15
+    },
+    "personality": {
+      "type": "creative",
+      "traits": ["innovative", "detail_oriented", "collaborative"],
+      "quirks": ["loves_typography", "perfectionist_tendencies"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -5,
+        "praised": 10,
+        "criticized": -12,
+        "creative_freedom": 8
+      }
+    },
+    "dialogue": {
+      "happy": ["Love working on this!", "This design is coming together"],
+      "neutral": ["Refining the details", "Making progress"],
+      "stressed": ["This needs more time", "Rushing hurts quality"],
+      "burned_out": ["I'm exhausted", "Can't maintain this pace"]
+    }
+  },
+  {
+    "id": "polina_designer",
+    "name": "Polina",
+    "role": "Designer",
+    "skill": 3,
+    "bio": "Versatile designer who adapts quickly to any project. Great at multitasking and always brings positive energy to the team.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": true,
+      "workSpeedMultiplier": 1.0,
+      "qualityMultiplier": 1.0
+    },
+    "personality": {
+      "type": "versatile",
+      "traits": ["adaptable", "quick_learner", "team_player"],
+      "quirks": ["good_at_multitasking", "positive_attitude"]
+    },
+    "morale": {
+      "current": 80,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -4,
+        "praised": 9,
+        "criticized": -10,
+        "variety_in_work": 6
+      }
+    },
+    "dialogue": {
+      "happy": ["This is fun!", "Enjoying the challenge"],
+      "neutral": ["Working through it", "All good"],
+      "stressed": ["A bit overwhelmed", "Could use help"],
+      "burned_out": ["Feeling drained", "Need a break"]
+    }
+  },
+  {
+    "id": "ksenia_manager",
+    "name": "Ksenia",
+    "role": "Manager",
+    "skill": 4,
+    "bio": "Strategic manager who sees the big picture. Excellent at coordination and always thinking three steps ahead.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": true,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.15,
+      "qualityMultiplier": 1.05
+    },
+    "personality": {
+      "type": "strategic",
+      "traits": ["analytical", "proactive", "good_communicator"],
+      "quirks": ["excellent_at_coordination", "sees_big_picture"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -4,
+        "praised": 8,
+        "criticized": -10,
+        "strategic_work": 7
+      }
+    },
+    "dialogue": {
+      "happy": ["We're making great progress", "Everything is organized"],
+      "neutral": ["Coordinating tasks", "On schedule"],
+      "stressed": ["Timeline is tight", "Need to adjust plans"],
+      "burned_out": ["Too much coordination", "Feeling stretched"]
+    }
+  },
+  {
+    "id": "lisa_designer",
+    "name": "Lisa",
+    "role": "Designer",
+    "skill": 3,
+    "bio": "Enthusiastic designer full of energy and fresh ideas. Sometimes overcommits but always brings creative solutions.",
+    "characteristics": {
+      "oftenGetsIll": true,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.1,
+      "qualityMultiplier": 0.95
+    },
+    "personality": {
+      "type": "enthusiastic",
+      "traits": ["energetic", "creative", "eager_to_learn"],
+      "quirks": ["brings_fresh_ideas", "sometimes_overcommits"]
+    },
+    "morale": {
+      "current": 80,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -5,
+        "praised": 11,
+        "criticized": -12,
+        "new_challenges": 7
+      }
+    },
+    "dialogue": {
+      "happy": ["This is amazing!", "So excited about this project"],
+      "neutral": ["Working hard", "Making it happen"],
+      "stressed": ["A lot on my plate", "Trying to keep up"],
+      "burned_out": ["I'm tired", "Need to slow down"]
+    }
+  },
+  {
+    "id": "natasha_designer",
+    "name": "Natasha",
+    "role": "Designer",
+    "skill": 4,
+    "bio": "Meticulous designer with impossibly high standards. Takes time to perfect everything, but the results are always flawless.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": false,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 0.75,
+      "qualityMultiplier": 1.3
+    },
+    "personality": {
+      "type": "meticulous",
+      "traits": ["precise", "quality_focused", "methodical"],
+      "quirks": ["takes_time_to_perfect", "high_standards"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -6,
+        "praised": 10,
+        "criticized": -15,
+        "time_for_quality": 8
+      }
+    },
+    "dialogue": {
+      "happy": ["This looks perfect", "Quality work takes time"],
+      "neutral": ["Refining details", "Making sure it's right"],
+      "stressed": ["Rushing compromises quality", "Need more time"],
+      "burned_out": ["Can't maintain standards", "Too much pressure"]
+    }
+  },
+  {
+    "id": "roma_manager",
+    "name": "Roma",
+    "role": "Manager",
+    "skill": 3,
+    "bio": "Reliable manager who's always there when you need them. Steady performer who handles crises without breaking a sweat.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": true,
+      "doesNotLoseMorale": false,
+      "workSpeedMultiplier": 1.0,
+      "qualityMultiplier": 1.0
+    },
+    "personality": {
+      "type": "reliable",
+      "traits": ["consistent", "dependable", "good_under_pressure"],
+      "quirks": ["steady_performer", "handles_crises_well"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -4,
+        "praised": 8,
+        "criticized": -10,
+        "stable_environment": 5
+      }
+    },
+    "dialogue": {
+      "happy": ["Everything under control", "Running smoothly"],
+      "neutral": ["Handling it", "All good"],
+      "stressed": ["Things are getting busy", "Managing priorities"],
+      "burned_out": ["Feeling the pressure", "Need support"]
+    }
+  },
+  {
+    "id": "olya_girlfriend",
+    "name": "Olya",
+    "role": "Support",
+    "skill": 1,
+    "bio": "Your supportive girlfriend who helps out around the agency. Doesn't have professional skills but always willing to pitch in at 25% efficiency.",
+    "characteristics": {
+      "oftenGetsIll": false,
+      "canWorkWeekends": true,
+      "doesNotLoseMorale": true,
+      "workSpeedMultiplier": 0.25,
+      "qualityMultiplier": 0.8
+    },
+    "personality": {
+      "type": "supportive",
+      "traits": ["versatile", "helpful", "positive"],
+      "quirks": ["can_help_with_anything", "reduced_efficiency", "always_willing"]
+    },
+    "morale": {
+      "current": 85,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -3,
+        "praised": 12,
+        "criticized": -8,
+        "helping_team": 6
+      }
+    },
+    "dialogue": {
+      "happy": ["Happy to help!", "Glad I can contribute"],
+      "neutral": ["Doing my best", "Helping where I can"],
+      "stressed": ["Trying to keep up", "Wish I could do more"],
+      "burned_out": ["Feeling overwhelmed", "Need a break"]
+    },
+    "specialProperties": {
+      "efficiencyMultiplier": 0.25,
+      "canWorkOnAnyProject": true
     }
   }
 ]

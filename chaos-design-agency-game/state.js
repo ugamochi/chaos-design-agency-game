@@ -33,7 +33,8 @@ const GameStateModule = (function() {
     },
     gamePhase: 'tutorial',
     gameOver: false,
-    victoryPath: null
+    victoryPath: null,
+    lastSalaryMonth: -1 // Track which month (week / 4) we last paid salaries (-1 means not paid yet)
 };
 
     let AllConversations = [];
@@ -103,6 +104,7 @@ const GameStateModule = (function() {
     GameState.gamePhase = 'tutorial';
     GameState.gameOver = false;
     GameState.victoryPath = null;
+    GameState.lastSalaryMonth = -1;
 }
 
     function saveState() {

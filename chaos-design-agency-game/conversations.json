@@ -22,18 +22,18 @@
             "projectId": "proj-001",
             "delta": 1,
             "timelineWeeks": 0.5,
-            "teamStress": -3
+            "teamStress": 3
           }
         },
         "flavorText": "Late night incoming..."
       },
       {
         "id": "choice_negotiate",
-          "text": "Sure, but deadline shifts 3 days",
+        "text": "Sure, but deadline shifts 3 days",
         "consequences": {
-          "money": 0,
+          "money": 2000,
           "teamMorale": 5,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
+          "projectProgress": { "projectId": "proj-001", "delta": 0.05 },
           "clientSatisfaction": { "projectId": "proj-001", "delta": -5 },
           "spawnConversations": [],
           "scopeChange": {
@@ -44,18 +44,6 @@
           }
         },
         "flavorText": "She's a bit disappointed but gets it."
-      },
-      {
-        "id": "choice_decline",
-          "text": "Out of scope - new contract required",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 10,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -20 },
-          "spawnConversations": []
-        },
-        "flavorText": "She hangs up abruptly. Yikes."
       }
     ]
   },
@@ -82,28 +70,16 @@
             "timelineWeeks": 1
           }
         },
-        "flavorText": "Painful, but now there’s budget for it."
-      },
-      {
-        "id": "choice_board_compromise",
-        "text": "Offer a limited variation instead",
-        "consequences": {
-          "teamMorale": 2,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -5 },
-          "scopeChange": {
-            "projectId": "proj-001",
-            "delta": 0.5,
-            "timelineWeeks": 0.5
-          }
-        },
-        "flavorText": "You manage expectations but still add work."
+        "flavorText": "Painful, but now there's budget for it."
       },
       {
         "id": "choice_board_pushback",
-          "text": "Push back—approved scope only",
+        "text": "Push back—approved scope only (60% they accept)",
         "consequences": {
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -12 },
-          "teamMorale": 4
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -12, "chance": 0.4 },
+          "teamMorale": 4,
+          "relationshipDamage": { "chance": 0.4, "projectId": "proj-001", "severity": "high" },
+          "spawnConversations": []
         },
         "flavorText": "Dr. Quell sighs but says she understands. The board might not."
       }
@@ -125,35 +101,23 @@
         "consequences": {
           "money": 1500,
           "teamMorale": -3,
+          "playerBurnout": 5,
           "scopeChange": {
             "projectId": "proj-001",
             "delta": 1,
-            "timelineWeeks": 1.5,
-            "teamStress": -2
+            "teamStress": 2
           }
         },
         "flavorText": "You price it fairly, but the team groans."
       },
       {
-        "id": "choice_offer_alt",
-        "text": "Offer a lighter alternative",
-        "consequences": {
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -3 },
-          "teamMorale": 2,
-          "scopeChange": {
-            "projectId": "proj-001",
-            "delta": 0.5,
-            "timelineWeeks": 0.5
-          }
-        },
-        "flavorText": "They accept reluctantly."
-      },
-      {
         "id": "choice_decline_competitor",
-        "text": "Explain why it isn’t worth it",
+        "text": "Explain why it isn't worth it (65% persuasion)",
         "consequences": {
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -10 },
-          "teamMorale": 4
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -10, "chance": 0.35 },
+          "teamMorale": 4,
+          "playerBurnout": -3,
+          "spawnConversations": []
         },
         "flavorText": "You stand your ground; they grumble."
       }
@@ -180,31 +144,19 @@
             "projectId": "proj-002",
             "delta": 2,
             "timelineWeeks": 2,
-            "teamStress": -3
+            "teamStress": 3
           }
         },
-        "flavorText": "You set expectations, but it’s still painful."
-      },
-      {
-        "id": "choice_pivot_partial",
-        "text": "Refresh only the messaging",
-        "consequences": {
-          "teamMorale": 2,
-          "clientSatisfaction": { "projectId": "proj-002", "delta": -5 },
-          "scopeChange": {
-            "projectId": "proj-002",
-            "delta": 1,
-            "timelineWeeks": 1
-          }
-        },
-        "flavorText": "Aurora loves ambition; this feels half measure."
+        "flavorText": "You set expectations, but it's still painful."
       },
       {
         "id": "choice_pivot_decline",
-          "text": "That's a new project, not a pivot",
+        "text": "That's a new project, not a pivot (40% she stays)",
         "consequences": {
-          "clientSatisfaction": { "projectId": "proj-002", "delta": -15 },
-          "teamMorale": 4
+          "clientSatisfaction": { "projectId": "proj-002", "delta": -15, "chance": 0.6 },
+          "teamMorale": 4,
+          "projectCancellation": { "projectId": "proj-002", "chance": 0.6 },
+          "spawnConversations": []
         },
         "flavorText": "She threatens to find another shop."
       }
@@ -230,7 +182,8 @@
             "projectId": "proj-002",
             "delta": 0.5,
             "timelineWeeks": 0.5
-          }
+          },
+          "spawnConversations": []
         },
         "flavorText": "Boundaries feel good."
       },
@@ -243,18 +196,10 @@
           "scopeChange": {
             "projectId": "proj-002",
             "delta": 0.5
-          }
+          },
+          "spawnConversations": []
         },
         "flavorText": "The team sighs, Aurora smiles."
-      },
-      {
-        "id": "choice_escalate_change",
-          "text": "Weekly reviews only, no more random tweaks",
-        "consequences": {
-          "clientSatisfaction": { "projectId": "proj-002", "delta": -6 },
-          "teamMorale": 3
-        },
-        "flavorText": "She agrees grudgingly."
       }
     ]
   },
@@ -263,7 +208,7 @@
     "week": 1,
     "day": 3,
     "urgency": "medium",
-    "from": "Alex (Junior Designer)",
+    "from": "Sasha (Manager)",
     "subject": "Stuck on Mythic Mango",
     "body": "Stuck. Client wants 'immersive but accessible.' What does that even mean?",
     "linkedProjectId": "proj-002",
@@ -274,23 +219,12 @@
         "consequences": {
           "money": -200,
           "teamMorale": 15,
+          "playerBurnout": 4,
           "projectProgress": { "projectId": "proj-002", "delta": 0.05 },
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 0 },
+          "clientSatisfaction": { "projectId": "proj-002", "delta": 8 },
           "spawnConversations": []
         },
-        "flavorText": "Alex looks relieved. Your other work waits."
-      },
-      {
-        "id": "choice_reassign",
-          "text": "Get someone else to review it",
-        "consequences": {
-          "money": -150,
-          "teamMorale": 5,
-          "projectProgress": { "projectId": "proj-002", "delta": 0.02 },
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 0 },
-          "spawnConversations": []
-        },
-        "flavorText": "Alex seems okay, but a bit frustrated."
+        "flavorText": "Sasha looks relieved. Your other work waits."
       },
       {
         "id": "choice_push_through",
@@ -298,10 +232,11 @@
         "consequences": {
           "money": 0,
           "teamMorale": -5,
+          "playerBurnout": -3,
           "clientSatisfaction": { "projectId": "proj-002", "delta": -5 },
           "spawnConversations": []
         },
-        "flavorText": "Alex nods but looks stressed."
+        "flavorText": "Sasha nods but looks stressed."
       }
     ]
   },
@@ -310,7 +245,7 @@
     "week": 2,
     "day": 1,
     "urgency": "critical",
-    "from": "Finance Team",
+    "from": "Sasha (Manager)",
     "subject": "Neon Meridian Labs payment late",
     "body": "Payment 5 days overdue. Payroll's next week. What now?",
     "linkedProjectId": "proj-001",
@@ -318,25 +253,15 @@
     "choices": [
       {
         "id": "choice_gentle_reminder",
-        "text": "Send a polite reminder",
+        "text": "Send a polite reminder (70% success)",
         "consequences": {
           "money": 0,
-          "teamMorale": 0,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -5 },
+          "teamMorale": 2,
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -3, "chance": 0.7 },
+          "paymentReceived": { "amount": 8000, "chance": 0.7 },
           "spawnConversations": []
         },
         "flavorText": "Professional. Might take a few days."
-      },
-      {
-        "id": "choice_direct_call",
-        "text": "Call Dr. Quell directly",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 0,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -10 },
-          "spawnConversations": []
-        },
-        "flavorText": "Accounting error. Payment tomorrow."
       },
       {
         "id": "choice_pause_work",
@@ -344,6 +269,7 @@
         "consequences": {
           "money": 0,
           "teamMorale": -10,
+          "playerBurnout": -5,
           "clientSatisfaction": { "projectId": "proj-001", "delta": -25 },
           "spawnConversations": []
         },
@@ -372,20 +298,10 @@
         "flavorText": "Great! Marcus sends $5k deposit. You've got a new project starting next week!"
       },
       {
-        "id": "choice_delay_start",
-        "text": "Can start in 3 weeks",
-        "consequences": {
-          "money": -200,
-          "teamMorale": 3,
-          "spawnConversations": []
-        },
-        "flavorText": "He'll check with his team."
-      },
-      {
         "id": "choice_decline_politely",
         "text": "At capacity right now, sorry",
         "consequences": {
-          "money": -1000,
+          "money": 0,
           "teamMorale": 5,
           "spawnConversations": []
         },
@@ -398,7 +314,7 @@
     "week": 3,
     "day": 2,
     "urgency": "critical",
-    "from": "Sarah (Developer)",
+    "from": "Pasha (Developer)",
     "subject": "Sick - can't come in",
     "body": "Fever. Can't deploy the portal today. Client's expecting it. Sorry!",
     "linkedProjectId": "proj-001",
@@ -406,38 +322,28 @@
     "choices": [
       {
         "id": "choice_cover_work",
-        "text": "Rest up - I'll handle deployment",
+        "text": "Rest up - I'll handle deployment (75% success)",
         "consequences": {
           "money": 0,
           "teamMorale": 10,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -5 },
+          "playerBurnout": 8,
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -5, "chance": 0.25 },
+          "projectProgress": { "projectId": "proj-001", "delta": 0.03, "chance": 0.75 },
           "spawnConversations": []
         },
         "flavorText": "Your whole day gone. Worth it though."
       },
       {
-        "id": "choice_delay_deployment",
-          "text": "Delay it - client will understand",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 5,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -15 },
-          "spawnConversations": []
-        },
-        "flavorText": "Dr. Quell: 'We had a deadline!'"
-      },
-      {
         "id": "choice_freelancer",
         "text": "I'll bring in a freelancer",
         "consequences": {
-          "money": -500,
+          "money": -600,
           "teamMorale": 5,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 0 },
+          "projectProgress": { "projectId": "proj-001", "delta": 0.1 },
+          "clientSatisfaction": { "projectId": "proj-001", "delta": 3 },
           "spawnConversations": []
         },
-        "flavorText": "Done, but it costs you $500."
+        "flavorText": "Done, but it costs you $600 for 8 hours of work."
       }
     ]
   },
@@ -446,7 +352,7 @@
     "week": 1,
     "day": 4,
     "urgency": "medium",
-    "from": "Mike (Designer)",
+    "from": "Tanue (Designer)",
     "subject": "Need 2 more days",
     "body": "This design isn't ready. Rush it now or give me 2 more days?",
     "linkedProjectId": "proj-001",
@@ -458,20 +364,14 @@
           "money": 0,
           "teamMorale": 8,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 10 },
+          "scopeChange": {
+            "projectId": "proj-001",
+            "delta": 0.5,
+            "timelineWeeks": 0.3
+          },
           "spawnConversations": []
         },
         "flavorText": "'Thank you! This will be exceptional.'"
-      },
-      {
-        "id": "choice_compromise",
-        "text": "One extra day, then we ship",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 2,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 5 },
-          "spawnConversations": []
-        },
-        "flavorText": "Mike accepts, a bit frustrated."
       },
       {
         "id": "choice_rush",
@@ -479,8 +379,8 @@
         "consequences": {
           "money": 0,
           "teamMorale": -12,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -5 },
+          "projectProgress": { "projectId": "proj-001", "delta": 0.15 },
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -8 },
           "spawnConversations": []
         },
         "flavorText": "'I'm not proud of this work.'"
@@ -492,7 +392,7 @@
     "week": 2,
     "day": 2,
     "urgency": "low",
-    "from": "Sarah (Developer)",
+    "from": "Pasha (Developer)",
     "subject": "Cut reactive animations?",
     "body": "Portal's taking too long. Cut the animations? Saves a week.",
     "linkedProjectId": "proj-001",
@@ -525,22 +425,10 @@
           "scopeChange": {
             "projectId": "proj-001",
             "delta": 1,
-            "teamStress": -2
+            "teamStress": 2
           }
         },
         "flavorText": "'Your call. Might miss deadline.'"
-      },
-      {
-        "id": "choice_ask_client",
-        "text": "Let me check with the client",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 0,
-          "projectProgress": { "projectId": "proj-001", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 0 },
-          "spawnConversations": []
-        },
-        "flavorText": "'Fair. Let me know.'"
       }
     ]
   },
@@ -549,7 +437,7 @@
     "week": 1,
     "day": 5,
     "urgency": "medium",
-    "from": "Alex (Junior Designer)",
+    "from": "Sasha (Manager)",
     "subject": "Think I messed up",
     "body": "Brand kit might be too weird. Can you look before I waste more time?",
     "linkedProjectId": "proj-002",
@@ -567,20 +455,8 @@
         "flavorText": "'Thank you! Learning so much.'"
       },
       {
-        "id": "choice_quick_fix",
-        "text": "I'll fix it - show me",
-        "consequences": {
-          "money": 0,
-          "teamMorale": 3,
-          "projectProgress": { "projectId": "proj-002", "delta": 0.01 },
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 0 },
-          "spawnConversations": []
-        },
-        "flavorText": "Relieved, but didn't learn much."
-      },
-      {
         "id": "choice_assign_help",
-        "text": "Have Mike review it",
+        "text": "Have Tanue review it",
         "consequences": {
           "money": 0,
           "teamMorale": 5,
@@ -597,34 +473,22 @@
     "week": 2,
     "day": 3,
     "urgency": "high",
-    "from": "Mike & Alex",
+    "from": "Tanue & Sasha",
     "subject": "Design fight",
-    "body": "Mike: 'Too experimental.' Alex: 'Too boring!' They're both staring at you.",
+    "body": "Tanue: 'Too experimental.' Sasha: 'Too boring!' They're both staring at you.",
     "linkedProjectId": "proj-002",
     "choices": [
       {
         "id": "choice_side_mike",
-        "text": "Go with Mike's approach",
+        "text": "Go with Tanue's approach",
         "consequences": {
           "money": 0,
           "teamMorale": -8,
-          "projectProgress": { "projectId": "proj-002", "delta": 0 },
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 0 },
-          "spawnConversations": []
-        },
-        "flavorText": "Alex looks crushed."
-      },
-      {
-        "id": "choice_side_alex",
-        "text": "Try Alex's innovative approach",
-        "consequences": {
-          "money": 0,
-          "teamMorale": -5,
-          "projectProgress": { "projectId": "proj-002", "delta": 0.02 },
+          "projectProgress": { "projectId": "proj-002", "delta": 0.03 },
           "clientSatisfaction": { "projectId": "proj-002", "delta": 5 },
           "spawnConversations": []
         },
-        "flavorText": "Mike: 'This is risky.'"
+        "flavorText": "Sasha looks crushed."
       },
       {
         "id": "choice_mediate",
@@ -632,7 +496,12 @@
         "consequences": {
           "money": 0,
           "teamMorale": 5,
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 0 },
+          "clientSatisfaction": { "projectId": "proj-002", "delta": 8 },
+          "scopeChange": {
+            "projectId": "proj-002",
+            "delta": 0.5,
+            "timelineWeeks": 0.5
+          },
           "spawnConversations": []
         },
         "flavorText": "Both okay with it. Takes extra time."
@@ -644,7 +513,7 @@
     "week": 3,
     "day": 1,
     "urgency": "critical",
-    "from": "Sarah (Developer)",
+    "from": "Pasha (Developer)",
     "subject": "Need to talk",
     "body": "Got a job offer. Better pay, better work. Feeling underutilized here.",
     "choices": [
@@ -664,21 +533,10 @@
         "consequences": {
           "money": 0,
           "teamMorale": -20,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.02 },
+          "removeTeamMember": "sarah_developer",
           "spawnConversations": []
         },
         "flavorText": "She looks surprised. 'Oh... okay.'"
-      },
-      {
-        "id": "choice_challenge_work",
-        "text": "What if I give you harder projects?",
-        "consequences": {
-          "money": -300,
-          "teamMorale": 10,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.01 },
-          "spawnConversations": []
-        },
-        "flavorText": "'That would actually help!'"
       }
     ]
   },
@@ -692,34 +550,15 @@
     "body": "Team's stressed. What's your move?",
     "choices": [
       {
-        "id": "choice_praise_team",
-        "text": "Praise and encouragement",
-        "consequences": {
-          "money": -100,
-          "teamMorale": 10,
-          "spawnConversations": []
-        },
-        "flavorText": "Team appreciates the recognition."
-      },
-      {
         "id": "choice_offer_break",
         "text": "Suggest a day off next week",
         "consequences": {
           "money": -300,
           "teamMorale": 15,
+          "playerBurnout": -5,
           "spawnConversations": []
         },
         "flavorText": "Everyone grateful. Projects slow down."
-      },
-      {
-        "id": "choice_discuss_concerns",
-        "text": "One-on-ones with stressed members",
-        "consequences": {
-          "money": -50,
-          "teamMorale": 8,
-          "spawnConversations": []
-        },
-        "flavorText": "They feel heard."
       },
       {
         "id": "choice_ignore",
@@ -727,7 +566,8 @@
         "consequences": {
           "money": 0,
           "teamMorale": -5,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.01 },
+          "playerBurnout": 5,
+          "projectProgress": { "projectId": "proj-001", "delta": 0.05 },
           "spawnConversations": []
         },
         "flavorText": "Team disappointed. Resentment builds."
@@ -739,37 +579,29 @@
     "week": 0,
     "day": 0,
     "urgency": "high",
-    "from": "Mike",
+    "from": "Tanue",
     "subject": "Running on fumes",
-    "body": "Mike's burnt out. Staring at the screen, nothing feels right.",
+    "body": "Tanue's burnt out. Staring at the screen, nothing feels right.",
     "choices": [
       {
         "id": "choice_mike_reset_day",
         "text": "Give him a day to reset his eyes",
         "consequences": {
           "money": -250,
-          "teamMorale": { "memberId": "mike_designer", "delta": 18 }
+          "teamMorale": { "memberId": "mike_designer", "delta": 18 },
+          "playerBurnout": -3,
+          "teamMemberHours": { "memberId": "mike_designer", "delta": -8 },
+          "spawnConversations": []
         },
         "flavorText": "He heads home early with a sketchbook instead of a deadline."
-      },
-      {
-        "id": "choice_mike_pair_up",
-        "text": "Pair up for a focused jam session",
-        "consequences": {
-          "teamMorale": [
-            { "memberId": "mike_designer", "delta": 12 },
-            { "memberId": "alex_junior", "delta": 4 }
-          ],
-          "projectProgress": { "projectId": "proj-001", "delta": 0.02 }
-        },
-        "flavorText": "Two brains kickstart momentum again."
       },
       {
         "id": "choice_mike_push_through_lm",
         "text": "\"We still need that deck—can you push through?\"",
         "consequences": {
           "teamMorale": { "memberId": "mike_designer", "delta": -10 },
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 5 }
+          "clientSatisfaction": { "projectId": "proj-001", "delta": 5 },
+          "spawnConversations": []
         },
         "flavorText": "He nods quietly. Not his best day."
       }
@@ -780,9 +612,9 @@
     "week": 0,
     "day": 0,
     "urgency": "high",
-    "from": "Sarah",
+    "from": "Pasha",
     "subject": "Need something challenging",
-    "body": "Sarah: 'One more static page and I'll scream. Give me a real challenge.'",
+    "body": "Pasha: 'One more static page and I'll scream. Give me a real challenge.'",
     "choices": [
       {
         "id": "choice_sarah_spike",
@@ -790,23 +622,20 @@
         "consequences": {
           "money": -150,
           "teamMorale": { "memberId": "sarah_developer", "delta": 15 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.03 }
+          "playerBurnout": -2,
+          "projectProgress": { "projectId": "proj-001", "delta": 0.02 },
+          "spawnConversations": []
         },
         "flavorText": "She lights up at the chance to tinker."
       },
       {
-        "id": "choice_sarah_rotate",
-          "text": "Rotate her to discovery work",
-        "consequences": {
-          "teamMorale": { "memberId": "sarah_developer", "delta": 20 }
-        },
-        "flavorText": "Fresh problems, slower timelines."
-      },
-      {
         "id": "choice_sarah_keep_course",
-          "text": "Stay the course - we're so close",
+        "text": "Stay the course - we're so close",
         "consequences": {
-          "teamMorale": { "memberId": "sarah_developer", "delta": -8 }
+          "teamMorale": { "memberId": "sarah_developer", "delta": -8 },
+          "playerBurnout": 3,
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -3 },
+          "spawnConversations": []
         },
         "flavorText": "She'll do it, but the spark fades."
       }
@@ -817,34 +646,29 @@
     "week": 0,
     "day": 0,
     "urgency": "medium",
-    "from": "Alex",
+    "from": "Sasha",
     "subject": "Feeling lost",
-    "body": "Alex: 'What if I'm not cut out for this?'",
+    "body": "Sasha: 'What if I'm not cut out for this?'",
     "choices": [
       {
         "id": "choice_alex_lighten",
-          "text": "Lighten workload, clarify priorities",
+        "text": "Lighten workload, clarify priorities",
         "consequences": {
-          "teamMorale": { "memberId": "alex_junior", "delta": 15 }
+          "teamMorale": { "memberId": "alex_junior", "delta": 15 },
+          "playerBurnout": -3,
+          "projectProgress": { "projectId": "proj-002", "delta": -0.02 },
+          "spawnConversations": []
         },
         "flavorText": "Less chaos, more confidence."
       },
       {
-        "id": "choice_alex_mentor",
-        "text": "Pair Alex with Mike for feedback loops",
-        "consequences": {
-          "teamMorale": [
-            { "memberId": "alex_junior", "delta": 12 },
-            { "memberId": "mike_designer", "delta": 4 }
-          ]
-        },
-        "flavorText": "Mentorship time well spent."
-      },
-      {
         "id": "choice_alex_toughlove",
-          "text": "Push through the discomfort",
+        "text": "Push through the discomfort",
         "consequences": {
-          "teamMorale": { "memberId": "alex_junior", "delta": -8 }
+          "teamMorale": { "memberId": "alex_junior", "delta": -8 },
+          "playerBurnout": 4,
+          "clientSatisfaction": { "projectId": "proj-002", "delta": -4 },
+          "spawnConversations": []
         },
         "flavorText": "He nods, but self-doubt lingers."
       }
@@ -855,34 +679,33 @@
     "week": 0,
     "day": 0,
     "urgency": "medium",
-    "from": "Mike",
+    "from": "Tanue",
     "subject": "In the zone",
-    "body": "Mike's on fire. Wants to try a bold alternate concept.",
+    "body": "Tanue's on fire. Wants to try a bold alternate concept.",
     "choices": [
       {
         "id": "choice_mike_polish_bonus",
-          "text": "Let him polish a wow variation",
+        "text": "Let him polish a wow variation",
         "consequences": {
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 10 }
+          "clientSatisfaction": { "projectId": "proj-001", "delta": 10 },
+          "scopeChange": {
+            "projectId": "proj-001",
+            "delta": 0.5,
+            "timelineWeeks": 0.5
+          },
+          "teamMemberHours": { "memberId": "mike_designer", "delta": -8 },
+          "portfolioBonus": { "chance": 0.5, "value": 1 },
+          "spawnConversations": []
         },
         "flavorText": "Could be portfolio gold—if you buy the time."
       },
       {
-        "id": "choice_mike_share_energy",
-          "text": "Have him mentor Alex",
-        "consequences": {
-          "teamMorale": [
-            { "memberId": "mike_designer", "delta": -3 },
-            { "memberId": "alex_junior", "delta": 10 }
-          ]
-        },
-        "flavorText": "Sharing the magic slows him slightly but lifts the team."
-      },
-      {
         "id": "choice_mike_keep_focus",
-          "text": "Bank the win, stay on schedule",
+        "text": "Bank the win, stay on schedule",
         "consequences": {
-          "teamMorale": { "memberId": "mike_designer", "delta": -2 }
+          "teamMorale": { "memberId": "mike_designer", "delta": -2 },
+          "playerBurnout": -2,
+          "spawnConversations": []
         },
         "flavorText": "He gets it—but the spark dims a bit."
       }
@@ -893,9 +716,9 @@
     "week": 0,
     "day": 0,
     "urgency": "medium",
-    "from": "Sarah",
+    "from": "Pasha",
     "subject": "Found a cleaner approach",
-    "body": "Sarah: 'Refactor now, save hours later.'",
+    "body": "Pasha: 'Refactor now, save hours later.'",
     "choices": [
       {
         "id": "choice_sarah_refactor",
@@ -903,27 +726,20 @@
         "consequences": {
           "money": -200,
           "teamMorale": { "memberId": "sarah_developer", "delta": 8 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.04 }
+          "projectProgress": { "projectId": "proj-001", "delta": 0.04 },
+          "teamMemberHours": { "memberId": "sarah_developer", "delta": -8 },
+          "spawnConversations": []
         },
         "flavorText": "She ships faster once the cleanup lands."
-      },
-      {
-        "id": "choice_sarah_share_learning",
-        "text": "Have her teach the rest of the team",
-        "consequences": {
-          "teamMorale": [
-            { "memberId": "sarah_developer", "delta": 5 },
-            { "memberId": "alex_junior", "delta": 6 }
-          ]
-        },
-        "flavorText": "A quick brown-bag talk spreads confidence."
       },
       {
         "id": "choice_sarah_hold",
         "text": "\"Log it for later, we must deliver now\"",
         "consequences": {
           "teamMorale": { "memberId": "sarah_developer", "delta": -3 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.02 }
+          "playerBurnout": 3,
+          "projectProgress": { "projectId": "proj-001", "delta": 0.02 },
+          "spawnConversations": []
         },
         "flavorText": "She notes it, but the window might close."
       }
@@ -934,33 +750,32 @@
     "week": 0,
     "day": 0,
     "urgency": "medium",
-    "from": "Alex",
+    "from": "Sasha",
     "subject": "I have an idea!",
-    "body": "Alex made a prototype. Client never asked for it, but it's pretty cool.",
+    "body": "Sasha made a prototype. Client never asked for it, but it's pretty cool.",
     "choices": [
       {
         "id": "choice_alex_show_client",
-          "text": "Let Alex present it to the client",
+        "text": "Let Sasha present it to the client",
         "consequences": {
           "clientSatisfaction": { "projectId": "proj-002", "delta": 8 },
-          "teamMorale": { "memberId": "alex_junior", "delta": 6 }
+          "teamMorale": { "memberId": "alex_junior", "delta": 6 },
+          "scopeChange": {
+            "projectId": "proj-002",
+            "delta": 0.3,
+            "timelineWeeks": 0.3
+          },
+          "spawnConversations": []
         },
         "flavorText": "Clients love surprise delight (usually)."
       },
       {
-        "id": "choice_alex_document",
-          "text": "Document it for future pitches",
-        "consequences": {
-          "money": -200,
-          "teamMorale": { "memberId": "alex_junior", "delta": 8 }
-        },
-        "flavorText": "You invest a little now for templates later."
-      },
-      {
         "id": "choice_alex_keep_focus_high",
-          "text": "Nice! Park it, finish today's list first",
+        "text": "Nice! Park it, finish today's list first",
         "consequences": {
-          "teamMorale": { "memberId": "alex_junior", "delta": -4 }
+          "teamMorale": { "memberId": "alex_junior", "delta": -4 },
+          "playerBurnout": -2,
+          "spawnConversations": []
         },
         "flavorText": "He understands, but the excitement cools."
       }
@@ -971,35 +786,32 @@
     "week": 0,
     "day": 0,
     "urgency": "medium",
-    "from": "Alex",
+    "from": "Sasha",
     "subject": "What if we tried this?",
-    "body": "Alex has a wild idea. Could wow the client or derail everything.",
+    "body": "Sasha has a wild idea. Could wow the client or derail everything.",
     "choices": [
       {
         "id": "choice_alex_run_with_it",
-          "text": "Quick prototype, show the client",
+        "text": "Quick prototype, show the client",
         "consequences": {
-          "clientSatisfaction": { "projectId": "proj-002", "delta": 10 }
+          "clientSatisfaction": { "projectId": "proj-002", "delta": 10, "chance": 0.5 },
+          "teamMemberHours": { "memberId": "alex_junior", "delta": -8, "chance": 0.5 },
+          "scopeChange": {
+            "projectId": "proj-002",
+            "delta": 0.5,
+            "timelineWeeks": 0.5
+          },
+          "spawnConversations": []
         },
         "flavorText": "Risky, but it could win hearts."
       },
       {
-        "id": "choice_alex_internal_test",
-          "text": "Test internally first",
-        "consequences": {
-          "teamMorale": [
-            { "memberId": "alex_junior", "delta": 6 },
-            { "memberId": "mike_designer", "delta": 3 }
-          ]
-        },
-        "flavorText": "The team riffs without committing to the client yet."
-      },
-      {
         "id": "choice_alex_shelve",
-          "text": "Shelve it for later",
+        "text": "Shelve it for later",
         "consequences": {
           "teamMorale": { "memberId": "alex_junior", "delta": -5 },
-          "projectProgress": { "projectId": "proj-002", "delta": 0.01 }
+          "projectProgress": { "projectId": "proj-002", "delta": 0.01 },
+          "spawnConversations": []
         },
         "flavorText": "Ideas are cheap, shipping is hard."
       }
@@ -1020,44 +832,34 @@
         "id": "choice_accept_all",
         "text": "We'll deliver everything on schedule",
         "consequences": {
+          "money": 5000,
           "teamMorale": -15,
+          "playerBurnout": 8,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 20 },
           "scopeChange": {
             "projectId": "proj-001",
             "delta": 2,
             "budgetDelta": 5000,
-            "teamStress": -10
-          }
+            "teamStress": 10
+          },
+          "spawnConversations": []
         },
         "flavorText": "The team looks... concerned. This will be intense."
       },
       {
-        "id": "choice_extend_timeline",
-        "text": "We need 2 more weeks for this scope",
-        "consequences": {
-          "teamMorale": 5,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -10 },
-          "scopeChange": {
-            "projectId": "proj-001",
-            "delta": 2,
-            "timelineWeeks": 2,
-            "budgetDelta": 8000
-          }
-        },
-        "flavorText": "Realistic but they're not thrilled about the delay."
-      },
-      {
         "id": "choice_phase_approach",
-          "text": "Phase it: core now, extras later",
+        "text": "Phase it: core now, extras later",
         "consequences": {
           "money": 3000,
           "teamMorale": 8,
+          "playerBurnout": -2,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 5 },
           "scopeChange": {
             "projectId": "proj-001",
             "delta": 1,
             "budgetDelta": 3000
-          }
+          },
+          "spawnConversations": []
         },
         "flavorText": "Smart compromise. They agree to split it."
       }
@@ -1068,35 +870,29 @@
     "week": 5,
     "day": 1,
     "urgency": "high",
-    "from": "Sarah Chen (Senior Developer)",
+    "from": "Pasha (Senior Developer)",
     "subject": "Team burnout warning",
-    "body": "Team's breaking. Mike stays till midnight. Alex making mistakes. I'm exhausted. We need to fix this.",
+    "body": "Team's breaking. Tanue stays till midnight. Sasha making mistakes. I'm exhausted. We need to fix this.",
     "choices": [
       {
         "id": "choice_team_day_off",
         "text": "Everyone takes Friday off, paid",
         "consequences": {
           "money": -1000,
-          "teamMorale": 25
+          "teamMorale": 25,
+          "playerBurnout": -8,
+          "spawnConversations": []
         },
         "flavorText": "The relief on their faces says it all. This was needed."
       },
       {
-        "id": "choice_hire_help",
-        "text": "I'll bring in a freelancer to help",
-        "consequences": {
-          "money": -3000,
-          "teamMorale": 15,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.05 }
-        },
-        "flavorText": "Extra hands make light work. The team appreciates the backup."
-      },
-      {
         "id": "choice_push_through",
-          "text": "We're almost there, power through",
+        "text": "We're almost there, power through",
         "consequences": {
           "teamMorale": -20,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.1 }
+          "playerBurnout": 8,
+          "projectProgress": { "projectId": "proj-001", "delta": 0.1 },
+          "spawnConversations": []
         },
         "flavorText": "They don't say anything, but the energy shifts. This might backfire."
       }
@@ -1113,10 +909,13 @@
     "choices": [
       {
         "id": "choice_take_quickjob",
-        "text": "Take the quick logo job for cash",
+        "text": "Take the quick logo job for cash (80% quality)",
         "consequences": {
           "money": 1500,
-          "teamMorale": -5
+          "teamMorale": -5,
+          "playerBurnout": 5,
+          "clientSatisfaction": { "projectId": "proj-001", "delta": -8, "chance": 0.2 },
+          "spawnConversations": []
         },
         "flavorText": "Cash in hand, but it's a distraction from the main work."
       },
@@ -1125,18 +924,11 @@
         "text": "Stay focused on current clients",
         "consequences": {
           "teamMorale": 10,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 8 }
+          "playerBurnout": -3,
+          "clientSatisfaction": { "projectId": "proj-001", "delta": 8 },
+          "spawnConversations": []
         },
         "flavorText": "Quality over quick cash. Your clients notice the dedication."
-      },
-      {
-        "id": "choice_negotiate_advance",
-          "text": "Ask client for payment advance",
-        "consequences": {
-          "money": 3000,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": -5 }
-        },
-        "flavorText": "They agree, but it's awkward. The relationship feels more transactional now."
       }
     ]
   },
@@ -1151,30 +943,25 @@
     "choices": [
       {
         "id": "choice_quality_sprint",
-          "text": "Quality sprint - make it perfect",
+        "text": "Quality sprint - make it perfect",
         "consequences": {
           "teamMorale": -10,
+          "playerBurnout": 10,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 15 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.15 }
+          "projectProgress": { "projectId": "proj-001", "delta": 0.15 },
+          "spawnConversations": []
         },
         "flavorText": "Exhausting, but the work is genuinely excellent."
       },
       {
-        "id": "choice_steady_pace",
-        "text": "Maintain steady pace, deliver on time",
-        "consequences": {
-          "teamMorale": 5,
-          "projectProgress": { "projectId": "proj-001", "delta": 0.08 }
-        },
-        "flavorText": "Professional and sustainable. Not flashy, but reliable."
-      },
-      {
         "id": "choice_delegate_trust",
-          "text": "Trust the team, stop micromanaging",
+        "text": "Trust the team, stop micromanaging",
         "consequences": {
           "teamMorale": 15,
+          "playerBurnout": -5,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 5 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.1 }
+          "projectProgress": { "projectId": "proj-001", "delta": 0.1 },
+          "spawnConversations": []
         },
         "flavorText": "They rise to the occasion. Turns out they didn't need you hovering."
       }
@@ -1196,31 +983,415 @@
         "text": "Weekend crunch mode - we'll make it happen",
         "consequences": {
           "teamMorale": -25,
+          "playerBurnout": 15,
           "clientSatisfaction": { "projectId": "proj-001", "delta": 25 },
           "projectProgress": { "projectId": "proj-001", "delta": 0.2 },
-          "money": 5000
+          "money": 5000,
+          "spawnConversations": []
         },
         "flavorText": "The team rallies. It's brutal, but they deliver. This is what legends are made of... or burnout."
-      },
-      {
-        "id": "choice_realistic_demo",
-        "text": "We'll show what's ready, with clear roadmap for rest",
-        "consequences": {
-          "teamMorale": 5,
-          "clientSatisfaction": { "projectId": "proj-001", "delta": 10 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.1 }
-        },
-        "flavorText": "Professional honesty. They appreciate the transparency."
       },
       {
         "id": "choice_push_back",
         "text": "That timeline isn't realistic - need until Friday",
         "consequences": {
           "teamMorale": 12,
+          "playerBurnout": -4,
           "clientSatisfaction": { "projectId": "proj-001", "delta": -8 },
-          "projectProgress": { "projectId": "proj-001", "delta": 0.12 }
+          "projectProgress": { "projectId": "proj-001", "delta": 0.12 },
+          "spawnConversations": []
         },
         "flavorText": "They're frustrated but agree. Setting boundaries preserves the team."
+      }
+    ]
+  },
+  {
+    "id": "design_conference_invite",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Design Forward Conference",
+    "subject": "Speaking opportunity - Design Forward 2024",
+    "body": "We'd love to have you speak about agency management and creative workflows. 2-day event, travel required. Great networking opportunity!",
+    "choices": [
+      {
+        "id": "choice_attend_conference",
+        "text": "Accept - I'll make it work (60% new client lead)",
+        "consequences": {
+          "money": -800,
+          "teamMorale": 8,
+          "playerBurnout": -5,
+          "futureOpportunity": { "type": "project", "value": 15000, "chance": 0.6 },
+          "spawnConversations": []
+        },
+        "flavorText": "You book flights and hotel. The team will have to manage without you for a few days, but you'll bring back fresh ideas."
+      },
+      {
+        "id": "choice_decline_conference",
+        "text": "Can't spare the time right now",
+        "consequences": {
+          "teamMorale": -3,
+          "playerBurnout": 3,
+          "spawnConversations": []
+        },
+        "flavorText": "You decline politely. A missed opportunity, but you need to focus on current projects."
+      }
+    ]
+  },
+  {
+    "id": "electricity_bill",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "City Power & Utilities",
+    "subject": "Past due: Office electricity bill",
+    "body": "Your office electricity bill is overdue. $450 due immediately. Pay now or service may be interrupted, affecting all work.",
+    "choices": [
+      {
+        "id": "choice_pay_bill",
+        "text": "Pay it immediately",
+        "consequences": {
+          "money": -450,
+          "teamMorale": 2,
+          "playerBurnout": 2,
+          "spawnConversations": []
+        },
+        "flavorText": "Bill paid. The lights stay on and the team can keep working."
+      },
+      {
+        "id": "choice_delay_bill",
+        "text": "I'll pay it next week",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -5,
+          "playerBurnout": 5,
+          "spawnConversations": []
+        },
+        "flavorText": "You delay payment. The team worries about potential power outages affecting deadlines."
+      }
+    ]
+  },
+  {
+    "id": "exercise_reminder",
+    "week": 0,
+    "day": 0,
+    "urgency": "low",
+    "from": "FitnessTracker App",
+    "subject": "You've been inactive for 3 days",
+    "body": "Time to move! A quick 30-minute walk or workout can boost your energy and reduce stress. Your body needs it.",
+    "choices": [
+      {
+        "id": "choice_take_break_exercise",
+        "text": "Take a break and go for a walk",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 5,
+          "playerBurnout": -5,
+          "playerHours": -1,
+          "spawnConversations": []
+        },
+        "flavorText": "You step outside for 30 minutes. Fresh air clears your head. You feel more focused when you return."
+      },
+      {
+        "id": "choice_skip_exercise",
+        "text": "Not now - too much work",
+        "consequences": {
+          "teamMorale": -2,
+          "playerBurnout": 2,
+          "spawnConversations": []
+        },
+        "flavorText": "You dismiss the notification. The work piles up, but so does the fatigue."
+      }
+    ]
+  },
+  {
+    "id": "bedtime_reminder",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "SleepWell App",
+    "subject": "It's 11 PM - time to rest",
+    "body": "You're still at the office. It's late. Getting proper sleep will help you make better decisions tomorrow. Staying up will increase burnout.",
+    "choices": [
+      {
+        "id": "choice_go_home_sleep",
+        "text": "You're right - heading home",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 6,
+          "playerBurnout": -8,
+          "playerHours": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You shut down and head home. Tomorrow you'll be sharper and the team will appreciate the example you set."
+      },
+      {
+        "id": "choice_stay_late_work",
+        "text": "Just a bit more - push through",
+        "consequences": {
+          "teamMorale": -4,
+          "playerBurnout": 10,
+          "playerHours": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You work another 2 hours. Progress is made, but you're running on fumes. The team notices."
+      }
+    ]
+  },
+  {
+    "id": "office_supplies_order",
+    "week": 0,
+    "day": 0,
+    "urgency": "low",
+    "from": "Office Depot",
+    "subject": "Your monthly supplies order",
+    "body": "Time to restock: printer paper, pens, coffee, snacks. $180. Order now or risk running out mid-project.",
+    "choices": [
+      {
+        "id": "choice_order_supplies",
+        "text": "Order the supplies",
+        "consequences": {
+          "money": -180,
+          "teamMorale": 3,
+          "spawnConversations": []
+        },
+        "flavorText": "Supplies ordered. The team appreciates having what they need to work comfortably."
+      },
+      {
+        "id": "choice_skip_supplies",
+        "text": "We can make do for now",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You skip the order. Small inconveniences add up, and the team notices the lack of basic supplies."
+      }
+    ]
+  },
+  {
+    "id": "networking_event",
+    "week": 0,
+    "day": 0,
+    "urgency": "low",
+    "from": "Local Design Community",
+    "subject": "Design mixer this Thursday evening",
+    "body": "Monthly networking event. Free entry, drinks provided. Great for meeting potential clients and collaborators. 2-3 hours.",
+    "choices": [
+      {
+        "id": "choice_attend_networking",
+        "text": "I'll be there (50% leads to opportunity)",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 4,
+          "playerBurnout": -3,
+          "futureOpportunity": { "type": "project", "chance": 0.5 },
+          "spawnConversations": []
+        },
+        "flavorText": "You attend the event. You meet interesting people and exchange business cards. Could lead to future opportunities."
+      },
+      {
+        "id": "choice_skip_networking",
+        "text": "Too busy this week",
+        "consequences": {
+          "teamMorale": -1,
+          "playerBurnout": 2,
+          "spawnConversations": []
+        },
+        "flavorText": "You stay at the office. Work continues, but you miss potential connections."
+      }
+    ]
+  },
+  {
+    "id": "software_subscription",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Creative Tools Inc.",
+    "subject": "Design software subscription renewal",
+    "body": "Your annual design software subscription is due. $1,200 for the year. Essential tools for all projects. Renew now?",
+    "choices": [
+      {
+        "id": "choice_renew_software",
+        "text": "Renew - we need these tools",
+        "consequences": {
+          "money": -1200,
+          "teamMorale": 5,
+          "spawnConversations": []
+        },
+        "flavorText": "Subscription renewed. The team has access to all the latest tools and features."
+      },
+      {
+        "id": "choice_let_expire",
+        "text": "Let it expire - use free alternatives",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -8,
+          "spawnConversations": []
+        },
+        "flavorText": "You let the subscription expire. The team struggles with workarounds and free tools. Productivity suffers."
+      }
+    ]
+  },
+  {
+    "id": "lunch_break_reminder",
+    "week": 0,
+    "day": 0,
+    "urgency": "low",
+    "from": "Your Calendar",
+    "subject": "Lunch break reminder",
+    "body": "It's 1 PM. You've been working since 9 AM. Taking a proper lunch break will help maintain your energy and prevent burnout.",
+    "choices": [
+      {
+        "id": "choice_take_lunch",
+        "text": "Take a proper lunch break",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 4,
+          "playerBurnout": -5,
+          "playerHours": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You step away for a proper lunch. Good food and a mental reset. You return refreshed."
+      },
+      {
+        "id": "choice_skip_lunch",
+        "text": "Eat at desk - keep working",
+        "consequences": {
+          "teamMorale": -3,
+          "playerBurnout": 5,
+          "clientSatisfaction": { "projectId": "*", "delta": 3 },
+          "spawnConversations": []
+        },
+        "flavorText": "You eat quickly at your desk. More work gets done, but you feel the afternoon drag and your energy wanes."
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_enterprise",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Orbital Council Consortium",
+    "subject": "New project inquiry - Command Deck",
+      "body": "We've heard great things about your work. We need a comprehensive command deck application. $15k budget, 11 weeks timeline. Interested?",
+    "choices": [
+      {
+        "id": "choice_accept_enterprise",
+        "text": "Yes! Let's discuss details",
+        "consequences": {
+          "money": 3000,
+          "teamMorale": 6,
+          "spawnConversations": [],
+          "addProject": { "templateId": "enterprise_app" }
+        },
+        "flavorText": "Excellent! They send a $3k deposit. This is a major opportunity - complex but well-funded."
+      },
+      {
+        "id": "choice_decline_enterprise",
+        "text": "At capacity - recommend someone else",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You politely decline and refer them elsewhere. Smart to know your limits, but it's a big opportunity missed."
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_small_business",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Candlelight Nook & Co.",
+    "subject": "Website project inquiry",
+      "body": "We're a small business looking for a whimsical website. $3.5k budget, 5 weeks. A friend recommended you. Available?",
+    "choices": [
+      {
+        "id": "choice_accept_small_business",
+        "text": "Yes! Let's create something special",
+        "consequences": {
+          "money": 700,
+          "teamMorale": 4,
+          "spawnConversations": [],
+          "addProject": { "templateId": "small_business_site" }
+        },
+        "flavorText": "Great! They send a $700 deposit. Smaller project but good for cash flow and portfolio."
+      },
+      {
+        "id": "choice_decline_small_business",
+        "text": "Sorry, we're fully booked",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 1,
+          "spawnConversations": []
+        },
+        "flavorText": "You decline politely. They understand and wish you well."
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_startup",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Velocity Labs",
+    "subject": "Startup branding project",
+      "body": "We're a new tech startup. Need a complete brand identity and website. $7k budget, 8 weeks. Can you help us launch?",
+    "choices": [
+      {
+        "id": "choice_accept_startup",
+        "text": "Absolutely! Let's build your brand",
+        "consequences": {
+          "money": 1400,
+          "teamMorale": 5,
+          "spawnConversations": [],
+          "addProject": { "templateId": "startupx_branding" }
+        },
+        "flavorText": "Exciting! They send a $1.4k deposit. Startup projects are fast-paced but energizing."
+      },
+      {
+        "id": "choice_decline_startup",
+        "text": "Not taking new clients right now",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -1,
+          "spawnConversations": []
+        },
+        "flavorText": "You decline. They move on to find another agency."
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_rebrand",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Sustainable Brands Co.",
+    "subject": "Complete rebrand needed",
+      "body": "We're rebranding our entire company. Need new identity, website, and marketing materials. $12k budget, 10 weeks. Your reputation precedes you!",
+    "choices": [
+      {
+        "id": "choice_accept_rebrand",
+        "text": "Let's transform your brand",
+        "consequences": {
+          "money": 2400,
+          "teamMorale": 5,
+          "spawnConversations": [],
+          "addProject": { "templateId": "greenleaf_rebrand" }
+        },
+        "flavorText": "Perfect! They send a $2.4k deposit. Comprehensive rebrand projects are challenging but rewarding."
+      },
+      {
+        "id": "choice_decline_rebrand",
+        "text": "We're at capacity, sorry",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "You decline. They're disappointed but understand."
       }
     ]
   }

@@ -90,7 +90,12 @@ Team members in `GameState.team` include all template properties plus:
     currentAssignment: string | null,  // Project ID if assigned, null if available
     daysOnAssignment: number,          // Days spent on current project
     lowMoraleTriggered: boolean,       // Flag to prevent duplicate low morale events
-    highMoraleTriggered: boolean       // Flag to prevent duplicate high morale events
+    highMoraleTriggered: boolean,      // Flag to prevent duplicate high morale events
+    hours: number,                     // Available work hours (0-8, can go negative for overtime)
+    hoursWorkedToday: number,          // Hours worked today (for overtime tracking)
+    isIll: boolean,                    // True if team member is sick (loses 8 hours)
+    hasQuit: boolean,                  // True if team member has quit
+    burnout: number                    // Player-only: burnout level (0-100)
 }
 ```
 
@@ -98,7 +103,10 @@ Team members in `GameState.team` include all template properties plus:
 - `id: "player"` (hardcoded)
 - Can be assigned to multiple projects simultaneously (with reduced efficiency: 0.6x per project)
 - Not included in team morale calculations
-- No morale tracking (player is always available)
+- Has `burnout` property (0-100) that affects decision-making
+- High burnout (≥60%) can block certain conversation choices
+- Burnout ≥80% triggers warning key moment
+- Can call in sick to reduce burnout (via `callInSick()` function)
 
 ---
 
@@ -332,6 +340,16 @@ consequences.scopeChange: [
 consequences.spawnConversations: string[]  // Array of conversation IDs to queue
 ```
 
+### Player Burnout
+```javascript
+consequences.playerBurnout: number  // Direct change to player burnout (-100 to +100, clamped to 0-100)
+```
+
+### Player Hours
+```javascript
+consequences.playerHours: number  // Direct change to player available hours (-8 to +8, clamped to 0-8)
+```
+
 ---
 
 ## History Entry Structure
@@ -399,16 +417,20 @@ AllProjectTemplates: ProjectTemplate[] // All project templates
 4. If new week: reset `currentHour` to 9 AM, update game phase, trigger scripted events
 5. Check for game end (`currentWeek > 12`) → triggers victory
 6. Purge expired deferred conversations
-7. Update team morale (`updateTeamMorale()`)
-8. Update projects (`updateProjects()`)
-9. Check for team events (`checkTeamEvents()`)
-10. Check failure conditions (`checkFailureConditions()`)
-11. Check for conversations (`checkForConversations()`)
-12. If day 7: check team pulse, process weekly costs, show week summary, generate weekly client feedback
-13. Check project deadlines (`checkProjectDeadlines()`)
-14. Update game stats (`updateGameStats()`)
-15. Display updated state
-16. Save to localStorage
+7. **Reset daily hours** (`resetDailyHours()`) - Sets all team members to 8 hours, resets `hoursWorkedToday` to 0
+8. **Check for illness** (`checkForIllness()`) - Random chance team members get sick, losing 8 hours
+9. Update projects (`updateProjects()`) - Team members spend hours on assigned projects
+10. **Update player burnout** (`updatePlayerBurnout()`) - Calculates daily burnout changes based on workload
+11. Update team morale (`updateTeamMorale()`)
+12. Check for team events (`checkTeamEvents()`)
+13. Check failure conditions (`checkFailureConditions()`)
+14. Check for conversations (`checkForConversations()`)
+15. Check for contextual tips (`checkForContextualTips()`)
+16. If day 7: check team pulse, process weekly costs, show week summary, generate weekly client feedback
+17. Check project deadlines (`checkProjectDeadlines()`)
+18. Update game stats (`updateGameStats()`)
+19. Display updated state
+20. Save to localStorage
 
 ### Team Morale Updates (`updateTeamMorale()`)
 - Applied daily to each team member (except player)
@@ -421,12 +443,16 @@ AllProjectTemplates: ProjectTemplate[] // All project templates
 For each active project:
 - If no team assigned: no progress, satisfaction updates only
 - If team assigned:
-  - **Daily progress per member**: `(skill / 5) / complexity * (morale / 100) * 0.10` (doubled from 0.05 for faster pacing)
+  - **Hours spent per member**: Up to 8 hours per day (or less if `hours < 8`)
+  - **Sick members**: Cannot work (`isIll = true` members are skipped)
+  - **Daily progress per member**: Based on hours spent, skill, complexity, and morale
   - **Status multipliers**:
     - `crisis`: 0x (no progress)
     - `warning`: 0.5x
     - `ok`: 1.0x
-  - **Player efficiency**: 0.6x if assigned to multiple projects
+  - **Player efficiency**: 0.6x if assigned to multiple projects, hours split evenly
+  - **Overtime work**: If `hours <= 0`, can still work at 50% efficiency (increases player burnout)
+  - **Player burnout penalty**: If player burnout > 50%, progress reduced by `(burnout - 50) / 10`%
   - **Random variation**: ±10%
 - Decrement `weeksRemaining` by `1/7` per day
 - If `progress >= 1.0`: trigger `completeProject()`
@@ -455,8 +481,44 @@ For each active project:
 - **Daily Advancement:** When day advances, clock moves forward by 2-4 hours randomly
 - **Week Reset:** At start of new week, `currentHour` resets to 9 (9:00 AM)
 - **Display:** Shows time in 12-hour format (e.g., "9:00 AM", "2:00 PM", "9:00 PM")
-- **Visual Feedback:** Clock icon animates when time advances
+- **Visual Feedback:** Clock icon animates when time advances, shows remaining work hours (9 AM - 6 PM)
 - **Purpose:** Provides sense of time progression through the work week
+
+### Hours System (`resetDailyHours()`)
+- **Location:** `game.js`
+- **Daily Reset:** Called at start of each day advance
+- **Function:** Sets all team members to 8 available hours, resets `hoursWorkedToday` to 0
+- **Work Day:** 9 AM to 6 PM (9 hours total, but team members have 8 hours capacity)
+- **Overtime:** If `hours` goes negative, team member is working overtime (50% efficiency, increases burnout for player)
+- **Illness Impact:** Sick team members (`isIll = true`) lose 8 hours for the day
+
+### Player Burnout System (`updatePlayerBurnout()`)
+- **Location:** `projects.js`
+- **Daily Update:** Called after projects update each day
+- **Burnout Increases:**
+  - `+2` per assigned project
+  - `+1` if hours < 4
+  - `+3` per crisis project assigned to
+  - `+1` if team morale < 50
+- **Burnout Decreases:**
+  - `-3` if unassigned and hours ≥ 7
+  - `-2` if unassigned and hours ≥ 6
+  - `-1` if unassigned and hours ≥ 5
+  - `-2` if 1 project assigned and hours ≥ 7
+- **Thresholds:**
+  - `≥80%`: Triggers "Art Director Burnout Warning" key moment
+  - `≥60%`: Some conversation choices become unavailable
+  - `≥90%`: Higher chance of making poor decisions in conversations
+- **Recovery:** Player can call in sick (`callInSick()`) to reduce burnout by 30-50%
+
+### Illness System (`checkForIllness()`)
+- **Location:** `projects.js`
+- **Daily Check:** Called at start of each day advance
+- **Illness Chance:** Random chance (configurable) that team members get sick
+- **Recovery:** If `isIll = true` from previous day, member recovers (hours restored to 8)
+- **New Illness:** If member gets sick, sets `isIll = true` and `hours = max(0, hours - 8)`
+- **Impact:** Sick members cannot work on projects, lose 8 hours for the day
+- **UI:** Shows "(Ill)" indicator on team member cards
 
 ### Response Time Tracking
 - When conversation opens: record `currentConversationStartTime`
@@ -540,6 +602,10 @@ For each active project:
 - `assignTeamMember(memberId, projectId)` - Assigns/unassigns team member
 - `getAvailableTeamMembers()` - Returns unassigned team members
 - `getTeamMemberStatus(memberId)` - Returns member's current status/mood
+- `checkForIllness()` - Checks for random team member illness, handles recovery
+- `showIllnessPopup(member)` - Displays illness notification modal
+- `updatePlayerBurnout()` - Calculates and updates player burnout level
+- `callInSick()` - Player action to take a sick day and reduce burnout
 
 ### Conversation Management (`conversations.js`)
 - `checkForConversations()` - Checks for auto-triggered conversations
@@ -562,6 +628,7 @@ For each active project:
 - `initGame()` - Initializes game, loads JSON files, restores state
 - `advanceDay()` - Main game loop function
 - `seedInitialProjects()` - Creates starting projects
+- `resetDailyHours()` - Resets all team members to 8 hours at start of day
 - `updateGamePhase()` - Updates game phase based on current week
 - `triggerScriptedEvents()` - Triggers milestone key moments
 - `checkFailureConditions()` - Checks for game over conditions
@@ -754,31 +821,31 @@ Five major scripted events create difficulty curve:
 ### Week 3: Major Scope Creep Crisis
 - **ID:** `week3_scope_creep_crisis`
 - Client requests major expansion (mobile, dark mode, accessibility)
-- 3 choices: Accept all / Extend timeline / Phase approach
+- 2 choices: Accept all / Phase approach
 - Tests scope management and negotiation
 
 ### Week 5: Team Morale Crisis
 - **ID:** `week5_morale_crisis`
 - Team burnout warning from senior developer
-- 3 choices: Day off / Hire help / Push through
+- 2 choices: Day off / Push through
 - Tests team management and resource decisions
 
 ### Week 7: Budget Pressure
 - **ID:** `week7_budget_pressure`
 - Weekly costs vs. quick job opportunity
-- 3 choices: Take quick job / Stay focused / Ask for advance
+- 2 choices: Take quick job / Stay focused
 - Tests financial management
 
 ### Week 10: Final Push Decision
 - **ID:** `week10_final_push`
 - Quality vs. timeline strategic choice
-- 3 choices: Quality sprint / Steady pace / Trust team
+- 2 choices: Quality sprint / Trust team
 - Tests leadership and prioritization
 
 ### Week 11: Crunch Time
 - **ID:** `week11_crunch_decision`
 - Last-minute client presentation demand
-- 3 choices: Weekend crunch / Realistic demo / Push back
+- 2 choices: Weekend crunch / Push back
 - Tests boundaries and sustainability
 
 ---
@@ -854,5 +921,5 @@ Potential additions for future versions:
 
 ---
 
-*Last Updated: After UI polish updates (Clock system, progress fixes, control panel reorganization)*
+*Last Updated: After hours system, player burnout, and illness mechanics implementation*
 

@@ -4,28 +4,28 @@ const TutorialModule = (function() {
     'use strict';
 
     let tutorialState = {
-    enabled: true,
+    enabled: false, // Tutorial disabled by default
     completed: false,
     currentStep: 0,
     steps: [
         {
             id: 'welcome',
             title: 'Welcome to Agency Chaos Simulator!',
-            message: 'You're running a small design agency. Survive 12 weeks by managing projects, keeping clients happy, and maintaining team morale.',
+            message: 'You\'re running a small design agency. Survive 12 weeks by managing projects, keeping clients happy, and maintaining team morale.',
             target: null,
             position: 'center'
         },
         {
             id: 'resources',
             title: 'Your Resources',
-            message: 'Keep an eye on Money (don't go bankrupt!), Team Morale (happy team = better work), and Client Satisfaction (determines payment).',
+            message: 'Keep an eye on Money (don\'t go bankrupt!), Team Morale (happy team = better work), and Client Satisfaction (determines payment).',
             target: '.resources',
             position: 'bottom'
         },
         {
             id: 'projects',
             title: 'Active Projects',
-            message: 'Each project has progress, deadlines, and satisfaction. Projects without teams won't make progress!',
+            message: 'Each project has progress, deadlines, and satisfaction. Projects without teams won\'t make progress!',
             target: '.project-timeline',
             position: 'top'
         },
@@ -77,24 +77,24 @@ const TutorialModule = (function() {
 };
 
     function initTutorial() {
-    const savedTutorialState = localStorage.getItem('agencyChaosTutorial');
-    const isNewGame = GameState.currentWeek === 1 && GameState.currentDay === 1;
+        const savedTutorialState = localStorage.getItem('agencyChaosTutorial');
+        const isNewGame = window.GameState.currentWeek === 1 && window.GameState.currentDay === 1;
     
-    // For new games (Week 1 Day 1), ALWAYS enable tutorial and reset state
+    // Initialize tutorial for new games
     if (isNewGame) {
-        tutorialState.enabled = true;
+        tutorialState.enabled = false; // Disabled by default
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
-        saveTutorialState(); // Save immediately to override any old disabled state
+        saveTutorialState();
     } else if (savedTutorialState) {
-        // For existing games, load saved state
+        // For existing games, load saved state with sensible defaults
         const saved = JSON.parse(savedTutorialState);
-        tutorialState.completed = saved.completed || false;
-        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : true; // Default to enabled if not set
+        tutorialState.completed = saved.completed !== undefined ? saved.completed : false;
+        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : false; // Default to disabled
         tutorialState.currentStep = saved.currentStep || 0;
     } else {
-        // No saved state - default to enabled
-        tutorialState.enabled = true;
+        // No saved state - default to disabled
+        tutorialState.enabled = false;
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
         saveTutorialState();
@@ -138,7 +138,7 @@ const TutorialModule = (function() {
     tooltip.innerHTML = `
         <div class="tutorial-header">
             <h3>${step.title}</h3>
-            <button class="tutorial-skip" onclick="skipTutorial()">Skip Tutorial</button>
+            <button class="tutorial-skip">Skip Tutorial</button>
         </div>
         <div class="tutorial-body">
             <p>${step.message}</p>
@@ -146,8 +146,8 @@ const TutorialModule = (function() {
         <div class="tutorial-footer">
             <span class="tutorial-progress">Step ${stepIndex + 1} of ${tutorialState.steps.length}</span>
             ${stepIndex < tutorialState.steps.length - 1 
-                ? `<button class="tutorial-next" onclick="nextTutorialStep()">Next</button>`
-                : `<button class="tutorial-next" onclick="nextTutorialStep()">Got it!</button>`
+                ? `<button class="tutorial-next">Next</button>`
+                : `<button class="tutorial-next">Got it!</button>`
             }
         </div>
     `;
@@ -155,23 +155,98 @@ const TutorialModule = (function() {
     overlay.appendChild(tooltip);
     document.body.appendChild(overlay);
 
+    // Ensure tooltip is clickable
+    tooltip.style.pointerEvents = 'auto';
+    
+    // Set up button handlers BEFORE adding overlay click handlers
+    const skipButton = tooltip.querySelector('.tutorial-skip');
+    const nextButton = tooltip.querySelector('.tutorial-next');
+    
+    if (skipButton) {
+        skipButton.type = 'button';
+        skipButton.style.cursor = 'pointer';
+        skipButton.style.pointerEvents = 'auto';
+        skipButton.style.zIndex = '2002';
+        skipButton.style.position = 'relative'; // Ensure it's positioned
+        
+        // Remove any existing handlers
+        const newSkipButton = skipButton.cloneNode(true);
+        skipButton.parentNode.replaceChild(newSkipButton, skipButton);
+        
+        // Add click handler to the new button
+        newSkipButton.addEventListener('click', function(e) {
+            console.log('Skip button clicked!');
+            e.stopPropagation();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            
+            // Try multiple ways to call the function
+            if (typeof window.skipTutorial === 'function') {
+                window.skipTutorial();
+            } else if (typeof skipTutorial === 'function') {
+                skipTutorial();
+            } else if (typeof TutorialModule.skipTutorial === 'function') {
+                TutorialModule.skipTutorial();
+            } else {
+                console.error('skipTutorial function not found!');
+                // Fallback: manually skip
+                removeTutorialHighlight();
+                removeTutorialOverlay();
+                tutorialState.completed = true;
+                tutorialState.enabled = false;
+                saveTutorialState();
+            }
+            return false;
+        }, true);
+        
+        // Also add mousedown to catch it even earlier
+        newSkipButton.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+        }, true);
+    } else {
+        console.warn('Skip tutorial button not found in tooltip');
+    }
+    
+    if (nextButton) {
+        nextButton.type = 'button';
+        nextButton.style.cursor = 'pointer';
+        nextButton.style.pointerEvents = 'auto';
+        nextButton.style.zIndex = '2002';
+        
+        nextButton.onclick = null;
+        nextButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            nextTutorialStep();
+            return false;
+        }, true);
+    }
+
+    // Set up overlay click handler (only for clicks outside tooltip)
     if (step.target) {
         const targetElement = document.querySelector(step.target);
         if (targetElement) {
             targetElement.classList.add('tutorial-highlight');
             positionTooltip(tooltip, targetElement, step.position);
-            
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    nextTutorialStep();
-                }
-            });
         } else {
             positionTooltip(tooltip, null, 'center');
         }
     } else {
         positionTooltip(tooltip, null, 'center');
     }
+    
+    // Overlay click handler - only trigger if clicking directly on overlay, not tooltip
+    overlay.addEventListener('click', (e) => {
+        // Don't interfere with tooltip clicks
+        if (e.target.closest('.tutorial-tooltip')) {
+            return;
+        }
+        // Only proceed if clicking directly on overlay
+        if (e.target === overlay) {
+            nextTutorialStep();
+        }
+    }, false); // Use bubble phase so tooltip clicks can stop it
 }
 
     function positionTooltip(tooltip, targetElement, position) {
@@ -294,25 +369,25 @@ const TutorialModule = (function() {
 }
 
     function checkForContextualTips() {
-    if (tutorialState.completed && tutorialState.enabled) {
-        if (GameState.money < 1000 && GameState.money > -1000) {
-            showContextualTip('💰 Low Cash Warning', 'You\'re running low on money. Consider finishing projects or taking on quick work.', 'warning', 5000);
-        }
-        
-        if (GameState.teamMorale < 40) {
-            showContextualTip('😰 Morale Crisis', 'Team morale is very low. Give them a break or reassign work to prevent quits.', 'warning', 5000);
-        }
-        
-        const projectsWithoutTeam = GameState.projects.filter(p => 
-            p.status !== 'complete' && 
-            !GameState.team.some(m => m.currentAssignment === p.id)
-        );
-        
-        if (projectsWithoutTeam.length > 0) {
-            showContextualTip('⚠️ Unassigned Projects', `${projectsWithoutTeam.length} project(s) have no team assigned. They won't make progress!`, 'warning', 5000);
+        if (window.tutorialState.completed && window.tutorialState.enabled) {
+            if (window.GameState.money < 1000 && window.GameState.money > -1000) {
+                showContextualTip('💰 Low Cash Warning', 'You\'re running low on money. Consider finishing projects or taking on quick work.', 'warning', 5000);
+            }
+            
+            if (window.GameState.teamMorale < 40) {
+                showContextualTip('😰 Morale Crisis', 'Team morale is very low. Give them a break or reassign work to prevent quits.', 'warning', 5000);
+            }
+            
+            const projectsWithoutTeam = window.GameState.projects.filter(p => 
+                p.status !== 'complete' && 
+                !window.GameState.team.some(m => m.currentAssignment === p.id)
+            );
+            
+            if (projectsWithoutTeam.length > 0) {
+                showContextualTip('⚠️ Unassigned Projects', `${projectsWithoutTeam.length} project(s) have no team assigned. They won\'t make progress!`, 'warning', 5000);
+            }
         }
     }
-}
 
     function resumeTutorialAfterConversation() {
         const step = tutorialState.steps[tutorialState.currentStep];
@@ -323,8 +398,14 @@ const TutorialModule = (function() {
         }
     }
 
+    function setTutorialEnabled(enabled) {
+        tutorialState.enabled = enabled;
+        saveTutorialState();
+    }
+
     return {
         getTutorialState: () => tutorialState,
+        setTutorialEnabled,
         initTutorial,
         showTutorialStep,
         positionTooltip,
@@ -341,10 +422,10 @@ const TutorialModule = (function() {
 })();
 
 // Expose on window for backward compatibility
-window.tutorialState = TutorialModule.getTutorialState();
 Object.defineProperty(window, 'tutorialState', {
     get: () => TutorialModule.getTutorialState()
 });
+window.TutorialModule = TutorialModule;
 window.initTutorial = TutorialModule.initTutorial;
 window.showTutorialStep = TutorialModule.showTutorialStep;
 window.positionTooltip = TutorialModule.positionTooltip;
