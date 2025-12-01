@@ -158,43 +158,73 @@ const ConversationsModule = (function() {
     }
 }
 
+    let isSubmitting = false;
+
     function submitConversationChoice() {
-        if (!currentConversation || !selectedChoiceId) return;
-
-    const choice = currentConversation.choices.find(c => c.id === selectedChoiceId);
-    if (!choice) return;
-
-        const player = window.GameState.team.find(m => m.id === 'player');
-        if (player) {
-            const hoursSpent = 1.5;
-            const hoursBefore = player.hours || 0;
-            player.hours = (player.hours || 0) - hoursSpent;
-            
-            if (player.hours < 0) {
-                const overtimeHours = Math.abs(player.hours);
-                const burnoutIncrease = Math.floor(overtimeHours * 3);
-                if (player.burnout !== undefined) {
-                    player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
-                }
-            }
-            
-            window.displayGameState();
+        if (isSubmitting) {
+            console.warn('Already submitting conversation choice, ignoring duplicate call');
+            return;
+        }
+        
+        if (!currentConversation || !selectedChoiceId) {
+            return;
         }
 
-        recordConversationResponse(currentConversation);
-        applyConsequences(choice.consequences || {}, currentConversation);
-        window.showConsequenceFeedback(choice.flavorText || '', choice.consequences || {});
+        isSubmitting = true;
+        const sendBtn = document.querySelector('.send-response-btn');
+        if (sendBtn) {
+            sendBtn.disabled = true;
+        }
 
-        window.GameState.resolvedConversations.push(currentConversation.id);
-        window.currentConversation = null;
-        window.selectedChoiceId = null;
+        try {
+            const choice = currentConversation.choices.find(c => c.id === selectedChoiceId);
+            if (!choice) {
+                isSubmitting = false;
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                }
+                return;
+            }
 
-        window.displayGameState();
-        window.saveState();
+            const player = window.GameState.team.find(m => m.id === 'player');
+            if (player) {
+                const hoursSpent = 1.5;
+                const hoursBefore = player.hours || 0;
+                player.hours = (player.hours || 0) - hoursSpent;
+                
+                if (player.hours < 0) {
+                    const overtimeHours = Math.abs(player.hours);
+                    const burnoutIncrease = Math.floor(overtimeHours * 3);
+                    if (player.burnout !== undefined) {
+                        player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
+                    }
+                }
+                
+                window.displayGameState();
+            }
 
-        setTimeout(() => {
-            window.checkForConversations();
-        }, 600);
+            recordConversationResponse(currentConversation);
+            applyConsequences(choice.consequences || {}, currentConversation);
+            window.showConsequenceFeedback(choice.flavorText || '', choice.consequences || {});
+
+            window.GameState.resolvedConversations.push(currentConversation.id);
+            window.currentConversation = null;
+            window.selectedChoiceId = null;
+
+            window.displayGameState();
+            window.saveState();
+
+            setTimeout(() => {
+                isSubmitting = false;
+                window.checkForConversations();
+            }, 600);
+        } catch (error) {
+            console.error('Error submitting conversation choice:', error);
+            isSubmitting = false;
+            if (sendBtn) {
+                sendBtn.disabled = false;
+            }
+        }
     }
 
     function applyConsequences(consequences, conversation) {

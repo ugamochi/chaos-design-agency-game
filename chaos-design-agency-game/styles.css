@@ -569,18 +569,16 @@ body {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid hsl(var(--border));
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
-.project-phases > label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: hsl(var(--muted-foreground));
-    margin-bottom: 0.75rem;
-}
 
 .phase-item {
-    margin-bottom: 0.75rem;
+    flex: 1;
+    min-width: 150px;
     padding: 0.75rem;
     background: hsl(var(--muted) / 0.3);
     border-radius: calc(var(--radius) - 2px);
@@ -945,6 +943,17 @@ body {
     line-height: 1.5;
 }
 
+.no-assignment-message.assign-phase-warning {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.no-assignment-message.assign-phase-warning:hover {
+    background: hsl(var(--warning) / 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px hsl(var(--warning) / 0.2);
+}
+
 .no-assignment-message strong {
     display: block;
     font-size: 1.1rem;
@@ -1119,6 +1128,53 @@ body {
 
 .team-member-card.stressed {
     border-left: 4px solid hsl(var(--warning));
+}
+
+/* ============================================
+   OFFICE VISUALIZATION SECTION
+   ============================================ */
+.office-visualization-section {
+    padding: 1rem 1.5rem;
+    background-color: hsl(var(--muted) / 0.2);
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.office-visualization-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 600;
+}
+
+.office-visualization {
+    width: 100%;
+    max-width: 100%;
+    background-color: #f7f6f3;
+    border-radius: 6px;
+    padding: 1.5rem;
+    overflow: hidden;
+}
+
+.office-svg {
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+    max-height: 500px;
+    display: block;
+}
+
+@media (max-width: 900px) {
+    .office-svg {
+        min-height: 300px;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 600px) {
+    .office-svg {
+        min-height: 250px;
+        max-height: 300px;
+    }
 }
 
 .team-member-card.excellent {

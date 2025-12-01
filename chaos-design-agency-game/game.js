@@ -86,6 +86,9 @@ const GameModule = (function() {
 
         window.checkForConversations();
         window.displayGameState();
+        if (window.OfficeVisualization && window.OfficeVisualization.init) {
+            window.OfficeVisualization.init();
+        }
         window.setupEventListeners();
         window.initTutorial();
     }

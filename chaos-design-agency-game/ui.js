@@ -140,6 +140,9 @@ const UIModule = (function() {
         window.updateClock();
         displayProjects();
         displayTeam();
+        if (window.OfficeVisualization && window.OfficeVisualization.update) {
+            window.OfficeVisualization.update();
+        }
         window.updateNotificationBadge();
         window.checkUnassignedProjectsWarning();
         
@@ -266,7 +269,7 @@ const UIModule = (function() {
         const phaseLabels = { management: 'Management', design: 'Design', development: 'Development', review: 'Review' };
         const phaseIcons = { management: '📋', design: '🎨', development: '💻', review: '✅' };
         
-        phasesHTML = '<div class="project-phases"><label>Phases</label>';
+        phasesHTML = '<div class="project-phases">';
         phaseNames.forEach(phaseName => {
             const phase = project.phases[phaseName];
             if (!phase) return;
@@ -385,12 +388,12 @@ const UIModule = (function() {
         card.classList.add('no-assignment-warning');
         card.classList.add('pulse-warning');
         const warning = document.createElement('div');
-        warning.className = 'no-assignment-message';
+        warning.className = 'no-assignment-message assign-phase-warning';
         warning.innerHTML = `
             <span class="warning-icon-small">⚠️</span>
             <strong>NO TEAM ASSIGNED</strong> - This project won't progress!
             <br>
-            <span class="warning-hint">Click a team member below and assign them to this project</span>
+            <span class="warning-hint">Click here to auto-assign available workers</span>
         `;
         card.appendChild(warning);
     }
@@ -718,7 +721,15 @@ const UIModule = (function() {
 
         const sendBtn = contentArea.querySelector('.send-response-btn');
         if (sendBtn) {
-            sendBtn.addEventListener('click', () => window.submitConversationChoice());
+            sendBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const btn = e.target.closest('.send-response-btn');
+                if (btn && !btn.disabled) {
+                    btn.disabled = true;
+                    window.submitConversationChoice();
+                }
+            });
         }
 
     const remindBtn = contentArea.querySelector('.remind-btn');
@@ -1109,6 +1120,12 @@ Conversation History: ${window.GameState.conversationHistory.length}
                     const projectId = btn.getAttribute('data-project-id');
                     if (projectId) {
                         showPhaseAssignmentModal(projectId);
+                    }
+                } else if (e.target.classList.contains('assign-phase-warning') || e.target.closest('.assign-phase-warning')) {
+                    if (window.autoAssignAvailableWorkers) {
+                        window.autoAssignAvailableWorkers();
+                    } else {
+                        Logger.error('window.autoAssignAvailableWorkers is not defined');
                     }
                 }
             });
