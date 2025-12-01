@@ -105,6 +105,10 @@ const GameStateModule = (function() {
     GameState.gameOver = false;
     GameState.victoryPath = null;
     GameState.lastSalaryMonth = -1;
+    
+    if (window.OfficeVisualization && window.OfficeVisualization.reset) {
+        window.OfficeVisualization.reset();
+    }
 }
 
     function saveState() {

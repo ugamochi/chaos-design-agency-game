@@ -39,8 +39,8 @@ const TutorialModule = (function() {
         {
             id: 'conversation_wait',
             title: 'Waiting for Conversation',
-            message: 'Let\'s advance to Day 1 to get your first client message. Click "Advance Day" when ready.',
-            target: '#advanceDayBtn',
+            message: 'The game runs in real-time. Your first client message will arrive automatically as time progresses.',
+            target: '.clock-display',
             position: 'top',
             waitForConversation: true
         },
@@ -62,8 +62,8 @@ const TutorialModule = (function() {
         {
             id: 'advance_time',
             title: 'Time Management',
-            message: 'Use "Advance Day" to move forward. Each week costs money in payroll. Watch for deadline warnings!',
-            target: '#advanceDayBtn',
+            message: 'The game runs automatically in real-time (1 game hour = 1 real second). Each week costs money in payroll. Watch for deadline warnings!',
+            target: '.clock-display',
             position: 'top'
         },
         {

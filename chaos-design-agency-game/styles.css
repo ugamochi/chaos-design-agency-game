@@ -1,27 +1,27 @@
 /* ============================================
-   SUPABASE THEME - CSS Variables
+   SUPABASE THEME - CSS Variables (Dark Mode)
    Based on tweakcn.com Supabase theme
    ============================================ */
 :root {
-    /* Supabase Theme Colors */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Supabase Dark Theme Colors */
+    --background: 222.2 47.4% 11.2%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 47.4% 11.2%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 47.4% 11.2%;
+    --popover-foreground: 210 40% 98%;
     --primary: 142.1 76.2% 36.3%;
     --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%; /* Brighter red for better visibility on dark background */
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
     
@@ -31,6 +31,22 @@
     --error: 0 84.2% 60.2%;
     --info: 199 89% 48%;
     --gold: 48 100% 50%;
+    
+    /* Typography Scale - Enhanced contrast */
+    --font-size-xs: 0.75rem;      /* 12px */
+    --font-size-sm: 0.875rem;     /* 14px */
+    --font-size-base: 1rem;       /* 16px */
+    --font-size-lg: 1.125rem;      /* 18px */
+    --font-size-xl: 1.25rem;      /* 20px */
+    --font-size-2xl: 1.5rem;      /* 24px */
+    --font-size-3xl: 1.875rem;    /* 30px */
+    --font-size-4xl: 2.25rem;     /* 36px */
+    
+    /* Font Weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
 }
 
 * {
@@ -95,24 +111,77 @@ body {
     border-top: 1px solid hsl(var(--border));
 }
 
+.header-actions-menu {
+    position: relative;
+    z-index: 1001;
+}
+
+.header-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 200px;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.menu-item-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.625rem 1rem;
+    background-color: transparent;
+    border: none;
+    border-radius: calc(var(--radius) - 4px);
+    color: hsl(var(--foreground));
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: inherit;
+}
+
+.menu-item-btn:hover {
+    background-color: hsl(var(--accent));
+}
+
+.menu-item-btn.menu-item-danger {
+    color: hsl(var(--destructive));
+}
+
+.menu-item-btn.menu-item-danger:hover {
+    background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Week Counter - Status Display */
 .week-counter {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.1rem;
+    font-size: var(--font-size-base);
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 .week-counter .label {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
     color: hsl(var(--muted-foreground));
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 .week-counter .value {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    font-weight: bold;
-    font-size: 1.2rem;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-xl);
     color: hsl(var(--foreground));
 }
 
@@ -121,30 +190,58 @@ body {
     margin: 0 0.25rem;
 }
 
+/* Clock Display - Informational Panel (not a button) */
 .clock-display {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-    padding: 0.75rem 1.5rem;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) - 2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     align-self: center;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    min-width: fit-content;
+    /* Subtle glow to indicate time is running */
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1), 
+                0 2px 4px hsl(var(--background) / 0.1);
+    transition: box-shadow 0.2s ease;
 }
 
 .clock-icon {
-    font-size: 1.3rem;
+    font-size: var(--font-size-xl);
     animation: subtle-pulse 2s ease-in-out infinite;
+    opacity: 0.9;
 }
 
 .clock-time {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    font-weight: bold;
-    font-size: 1.1rem;
-    letter-spacing: 0.5px;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-lg);
+    letter-spacing: 0.025em;
+    min-width: 90px;
+    text-align: left;
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--foreground));
+    /* Larger, more prominent time display */
+}
+
+/* Clock Pause Indicator - Shows when waiting for player input */
+.clock-pause-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: hsl(var(--muted-foreground));
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: hsl(var(--muted) / 0.5);
+    border-radius: calc(var(--radius) - 4px);
+    border: 1px solid hsl(var(--border));
+    animation: subtle-pulse 2s ease-in-out infinite;
+    white-space: nowrap;
 }
 
 .clock-time.time-advance {
@@ -166,6 +263,7 @@ body {
     display: flex;
     gap: 1.5rem;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .resource-item {
@@ -174,16 +272,30 @@ body {
     gap: 0.5rem;
 }
 
+.resource-toggle {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    transition: transform 0.2s ease;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.resource-toggle.expanded {
+    transform: rotate(180deg);
+}
+
+/* Resource Display - Data Panels */
 .resource-label {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
     color: hsl(var(--muted-foreground));
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 .resource-value {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    font-weight: bold;
-    font-size: 1.1rem;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
     position: relative;
     color: hsl(var(--foreground));
 }
@@ -197,11 +309,33 @@ body {
     background: hsl(var(--muted) / 0.5);
 }
 
+/* Typography Hierarchy */
+h1 {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: hsl(var(--foreground));
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    color: hsl(var(--foreground));
+    line-height: 1.3;
+}
+
+h3 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: hsl(var(--foreground));
+    line-height: 1.4;
+}
+
 .main-content-header h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: var(--font-size-2xl);
     color: hsl(var(--foreground));
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
 }
 
 .notification-badge {
@@ -212,8 +346,8 @@ body {
     color: hsl(var(--destructive-foreground));
     border-radius: 9999px;
     padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     letter-spacing: 0.02em;
     border: 1px solid transparent;
 }
@@ -221,6 +355,7 @@ body {
 /* ============================================
    BUTTONS - shadcn inspired
    ============================================ */
+/* Buttons - Interactive Elements (distinct from clock) */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -228,8 +363,8 @@ body {
     gap: 0.5rem;
     white-space: nowrap;
     border-radius: calc(var(--radius) - 2px);
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     transition: all 0.2s ease;
     cursor: pointer;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -238,6 +373,8 @@ body {
     position: relative;
     overflow: hidden;
     padding: 0.625rem 1.25rem;
+    /* Clear interactive styling */
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.1);
 }
 
 .btn:focus-visible {
@@ -330,6 +467,7 @@ body {
 /* ============================================
    CARDS - shadcn inspired
    ============================================ */
+/* Project & Team Cards - Content Panels */
 .project-card,
 .team-member-card {
     background-color: hsl(var(--card));
@@ -338,7 +476,9 @@ body {
     padding: 1.5rem;
     position: relative;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    /* Enhanced shadow for dark mode */
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.05),
+                0 1px 2px hsl(var(--foreground) / 0.1);
 }
 
 .project-card:hover,
@@ -371,6 +511,7 @@ body {
 /* ============================================
    BADGES - shadcn inspired
    ============================================ */
+/* Badges - Status Indicators */
 .project-status,
 .urgency-badge,
 .risk-chip {
@@ -379,10 +520,11 @@ body {
     justify-content: center;
     border-radius: 9999px;
     padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     transition: all 0.2s ease;
     border: 1px solid transparent;
+    letter-spacing: 0.025em;
 }
 
 .project-status.active,
@@ -479,14 +621,16 @@ body {
 }
 
 .project-name {
-    font-weight: 600;
-    font-size: 1.125rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xl);
     color: hsl(var(--foreground));
+    line-height: 1.3;
 }
 
 .project-client {
     color: hsl(var(--muted-foreground));
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
 }
 
 .project-timeline-section {
@@ -565,10 +709,47 @@ body {
 }
 
 /* Phase System Styles */
-.project-phases {
+.phases-wrapper {
     margin-top: 1rem;
-    padding-top: 1rem;
+}
+
+.phases-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem;
+    background: transparent;
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 2px);
+    color: hsl(var(--foreground));
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: inherit;
+}
+
+.phases-toggle-btn:hover {
+    background: hsl(var(--accent));
+}
+
+.phases-toggle-icon {
+    transition: transform 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.phases-toggle-btn.expanded .phases-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.project-phases-collapsible {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
     border-top: 1px solid hsl(var(--border));
+}
+
+.project-phases {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1149,10 +1330,11 @@ body {
 .office-visualization {
     width: 100%;
     max-width: 100%;
-    background-color: #f7f6f3;
+    background-color: hsl(var(--muted));
     border-radius: 6px;
     padding: 1.5rem;
     overflow: hidden;
+    border: 1px solid hsl(var(--border));
 }
 
 .office-svg {
@@ -1206,9 +1388,10 @@ body {
 }
 
 .team-member-name {
-    font-weight: 600;
-    font-size: 1.05rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-lg);
     color: hsl(var(--foreground));
+    line-height: 1.3;
 }
 
 .team-member-role {
@@ -1812,6 +1995,14 @@ body {
     font-size: 0.85rem;
     color: hsl(var(--muted-foreground));
     font-weight: 500;
+}
+
+.choice-btn .consequence-hint {
+    display: block;
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+    margin-top: 0.25rem;
 }
 
 .btn-send {

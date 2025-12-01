@@ -27,18 +27,18 @@
                             <span id="money" class="resource-value">$8000</span>
                         </div>
                         <div class="resource-item">
-                            <span class="resource-label">😊 Morale:</span>
-                            <span id="teamMorale" class="resource-value">75</span>
-                        </div>
-                        <div class="resource-item">
-                            <span class="resource-label">⭐ Satisfaction:</span>
-                            <span id="satisfaction" class="resource-value">--</span>
-                        </div>
-                        <div class="resource-item">
                             <span class="resource-label">🔥 Burnout:</span>
                             <span id="burnout" class="resource-value">0%</span>
                         </div>
-                        <div class="resource-item">
+                        <div class="resource-item resource-item-extra">
+                            <span class="resource-label">😊 Morale:</span>
+                            <span id="teamMorale" class="resource-value">75</span>
+                        </div>
+                        <div class="resource-item resource-item-extra">
+                            <span class="resource-label">⭐ Satisfaction:</span>
+                            <span id="satisfaction" class="resource-value">--</span>
+                        </div>
+                        <div class="resource-item resource-item-extra">
                             <span class="resource-label">⏰ Hours:</span>
                             <span id="playerHours" class="resource-value">8/8</span>
                         </div>
@@ -50,12 +50,15 @@
                         <span class="clock-icon">🕐</span>
                         <span id="gameClock" class="clock-time">9:00 AM</span>
                     </div>
-                    <button id="advanceDayBtn" class="btn btn-primary">Advance Day</button>
-                    <button id="callInSickBtn" class="btn btn-secondary" title="Call in sick to recover (reduces burnout, but you'll lose hours and emails will pile up)">😷 Call in Sick</button>
-                    <button id="autoAssignBtn" class="btn btn-secondary" title="Automatically assign available workers to projects">⚡ Auto-Assign</button>
-                    <button id="viewSummaryBtn" class="btn btn-secondary">View Summary</button>
-                    <button id="testBtn" class="btn btn-test">Test: Log State</button>
-                    <button id="resetBtn" class="btn btn-danger">Reset Game</button>
+                    <div class="header-actions-menu">
+                        <button id="headerMenuBtn" class="btn btn-secondary" title="More actions">⋯</button>
+                        <div id="headerMenuDropdown" class="header-menu-dropdown" style="display: none;">
+                            <button id="callInSickBtn" class="menu-item-btn" title="Call in sick to recover (reduces burnout, but you'll lose hours and emails will pile up)">😷 Call in Sick</button>
+                            <button id="autoAssignBtn" class="menu-item-btn" title="Automatically assign available workers to projects">⚡ Auto-Assign</button>
+                            <button id="viewSummaryBtn" class="menu-item-btn">📊 View Summary</button>
+                            <button id="resetBtn" class="menu-item-btn menu-item-danger">🔄 Reset Game</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -67,7 +70,7 @@
                 <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
             </div>
             <div id="contentArea" class="content-area">
-                <p class="welcome-message">Welcome to Agency Chaos Simulator! Click "Advance Day" to start.</p>
+                <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
             </div>
             <div id="activityFeed" class="activity-feed">
                 <!-- Activity feed will be dynamically inserted here -->
@@ -124,6 +127,7 @@
                 <h3>Game Controls</h3>
                 <button id="pauseBtn" class="btn btn-secondary settings-btn">⏸️ Pause Game</button>
                 <button id="restartGameBtn" class="btn btn-secondary settings-btn">🔄 Restart Game</button>
+                <button id="testBtn" class="btn btn-test settings-btn">Test: Log State</button>
             </div>
             <div class="settings-section">
                 <h3>Tutorial</h3>

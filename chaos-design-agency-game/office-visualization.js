@@ -286,7 +286,12 @@ const OfficeVisualizationModule = (function() {
 
         if (!deskSeatAssignments.has(member.id)) {
             const memberIndex = activeWorkers.findIndex(m => m.id === member.id);
-            deskSeatAssignments.set(member.id, memberIndex >= 0 ? memberIndex : deskSeatAssignments.size);
+            if (memberIndex >= 0) {
+                deskSeatAssignments.set(member.id, memberIndex);
+            } else {
+                const nextAvailableIndex = activeWorkers.length;
+                deskSeatAssignments.set(member.id, nextAvailableIndex);
+            }
         }
 
         const seatIndex = deskSeatAssignments.get(member.id);
@@ -529,10 +534,28 @@ const OfficeVisualizationModule = (function() {
         }
     }
 
+    function reset() {
+        teamPositions.clear();
+        projectCompletionTimes.clear();
+        deskSeatAssignments.clear();
+        lastUpdateTime = 0;
+        
+        if (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        }
+        
+        if (svg) {
+            clearOffice();
+            drawOfficeLayout();
+        }
+    }
+
     return {
         init,
         update: updateOfficeVisualization,
-        stop: stopAnimation
+        stop: stopAnimation,
+        reset
     };
 })();
 

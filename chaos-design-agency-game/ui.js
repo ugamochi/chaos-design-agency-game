@@ -156,19 +156,6 @@ const UIModule = (function() {
             window.updateMainContent();
         }
         
-        const advanceBtn = document.getElementById('advanceDayBtn');
-        if (advanceBtn) {
-            if (window.currentConversation === null || !conversationContainer) {
-                advanceBtn.classList.remove('btn-disabled-while-conversation');
-                advanceBtn.removeAttribute('disabled');
-                advanceBtn.style.pointerEvents = '';
-                advanceBtn.style.cursor = '';
-                advanceBtn.title = '';
-            } else {
-                advanceBtn.classList.add('btn-disabled-while-conversation');
-                advanceBtn.title = 'Respond to conversation first';
-            }
-        }
     }
 
     function displayProjects() {
@@ -269,7 +256,7 @@ const UIModule = (function() {
         const phaseLabels = { management: 'Management', design: 'Design', development: 'Development', review: 'Review' };
         const phaseIcons = { management: '📋', design: '🎨', development: '💻', review: '✅' };
         
-        phasesHTML = '<div class="project-phases">';
+        let phasesContent = '';
         phaseNames.forEach(phaseName => {
             const phase = project.phases[phaseName];
             if (!phase) return;
@@ -309,7 +296,7 @@ const UIModule = (function() {
             
             const hasFreelancer = phase.freelancerHired ? ' <span class="freelancer-badge">👤 Freelancer</span>' : '';
             
-            phasesHTML += `
+            phasesContent += `
                 <div class="phase-item phase-${phaseStatusClass}">
                     <div class="phase-header">
                         <span class="phase-icon">${phaseIcons[phaseName]}</span>
@@ -329,7 +316,19 @@ const UIModule = (function() {
                 </div>
             `;
         });
-        phasesHTML += '</div>';
+        phasesHTML = `
+            <div class="phases-wrapper">
+                <button class="phases-toggle-btn expanded" data-project-id="${project.id}">
+                    <span class="phases-toggle-icon">▼</span>
+                    <span>Phases</span>
+                </button>
+                <div class="project-phases-collapsible">
+                    <div class="project-phases">
+                        ${phasesContent}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     card.innerHTML = `
@@ -547,22 +546,11 @@ const UIModule = (function() {
 }
 
     function updateMainContent() {
-    const advanceBtn = document.getElementById('advanceDayBtn');
     const conversationContainer = document.querySelector('.conversation-container');
     
     if (window.currentConversation !== null && !conversationContainer) {
         window.currentConversation = null;
         window.selectedChoiceId = null;
-    }
-    
-    if (advanceBtn) {
-        if (window.currentConversation === null || !conversationContainer) {
-            advanceBtn.classList.remove('btn-disabled-while-conversation');
-            advanceBtn.title = '';
-        } else {
-            advanceBtn.classList.add('btn-disabled-while-conversation');
-            advanceBtn.title = 'Respond to conversation first';
-        }
     }
 
     if (window.currentConversation !== null) {
@@ -652,11 +640,6 @@ const UIModule = (function() {
         };
     
         // Update game state but don't update main content (we'll set conversation HTML next)
-        const advanceBtn = document.getElementById('advanceDayBtn');
-        if (advanceBtn) {
-            advanceBtn.classList.add('btn-disabled-while-conversation');
-            advanceBtn.title = 'Respond to conversation first';
-        }
         
         // Update other UI elements without touching contentArea
         document.getElementById('currentWeek').textContent = window.GameState.currentWeek;
@@ -1053,34 +1036,28 @@ Conversation History: ${window.GameState.conversationHistory.length}
         
         if (!button) {
             Logger.error(`${buttonId} not found`);
-            return;
+            return false;
         }
         
         button.addEventListener('click', (e) => {
             e.stopPropagation();
+            e.preventDefault();
             try {
                 handler();
             } catch (error) {
                 Logger.error(errorMsg || `Error in ${buttonId}:`, error);
             }
         });
+        return true;
     }
 
     function setupEventListeners() {
         const Logger = window.Logger || console;
         
-        attachButtonListener('advanceDayBtn', () => {
-            if (window.advanceDay) {
-                window.advanceDay();
-                if (window.resumeTutorialAfterConversation) {
-                    window.resumeTutorialAfterConversation();
-                }
-            } else {
-                Logger.error('window.advanceDay is not defined');
-            }
-        }, 'Error in advanceDay');
 
         attachButtonListener('autoAssignBtn', () => {
+            const headerMenuDropdown = document.getElementById('headerMenuDropdown');
+            if (headerMenuDropdown) headerMenuDropdown.style.display = 'none';
             if (window.autoAssignAvailableWorkers) {
                 window.autoAssignAvailableWorkers();
             } else {
@@ -1089,6 +1066,8 @@ Conversation History: ${window.GameState.conversationHistory.length}
         }, 'Error in autoAssignAvailableWorkers');
 
         attachButtonListener('callInSickBtn', () => {
+            const headerMenuDropdown = document.getElementById('headerMenuDropdown');
+            if (headerMenuDropdown) headerMenuDropdown.style.display = 'none';
             if (window.callInSick) {
                 window.callInSick();
             } else {
@@ -1097,6 +1076,8 @@ Conversation History: ${window.GameState.conversationHistory.length}
         }, 'Error in callInSick');
 
         attachButtonListener('viewSummaryBtn', () => {
+            const headerMenuDropdown = document.getElementById('headerMenuDropdown');
+            if (headerMenuDropdown) headerMenuDropdown.style.display = 'none';
             viewSummary();
         }, 'Error in viewSummary');
 
@@ -1108,6 +1089,8 @@ Conversation History: ${window.GameState.conversationHistory.length}
         }, 'Error in testBtn');
 
         attachButtonListener('resetBtn', () => {
+            const headerMenuDropdown = document.getElementById('headerMenuDropdown');
+            if (headerMenuDropdown) headerMenuDropdown.style.display = 'none';
             showResetConfirmModal();
         }, 'Error in showResetConfirmModal');
 
@@ -1127,12 +1110,88 @@ Conversation History: ${window.GameState.conversationHistory.length}
                     } else {
                         Logger.error('window.autoAssignAvailableWorkers is not defined');
                     }
+                } else if (e.target.classList.contains('phases-toggle-btn') || e.target.closest('.phases-toggle-btn')) {
+                    const btn = e.target.classList.contains('phases-toggle-btn') ? e.target : e.target.closest('.phases-toggle-btn');
+                    const projectId = btn.getAttribute('data-project-id');
+                    const phasesContainer = btn.nextElementSibling;
+                    if (phasesContainer && phasesContainer.classList.contains('project-phases-collapsible')) {
+                        const isExpanded = phasesContainer.style.display !== 'none';
+                        phasesContainer.style.display = isExpanded ? 'none' : 'block';
+                        btn.classList.toggle('expanded', !isExpanded);
+                    }
                 }
             });
         }
 
-        attachButtonListener('settingsBtn', showSettingsModal);
-        attachButtonListener('closeSettingsBtn', hideSettingsModal);
+        attachButtonListener('settingsBtn', () => {
+            if (window.showSettingsModal) {
+                window.showSettingsModal();
+            } else {
+                showSettingsModal();
+            }
+        }, 'Error in showSettingsModal');
+        
+        attachButtonListener('closeSettingsBtn', () => {
+            if (window.hideSettingsModal) {
+                window.hideSettingsModal();
+            } else {
+                hideSettingsModal();
+            }
+        }, 'Error in hideSettingsModal');
+        
+        const toggleResourcesBtn = document.getElementById('toggleResourcesBtn');
+        if (toggleResourcesBtn) {
+            toggleResourcesBtn.type = 'button';
+            toggleResourcesBtn.style.cursor = 'pointer';
+            toggleResourcesBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log('Resource toggle clicked');
+                const extraResources = document.querySelectorAll('.resource-item-extra');
+                if (extraResources.length === 0) {
+                    console.warn('No extra resources found');
+                    return;
+                }
+                const firstItem = extraResources[0];
+                const currentDisplay = window.getComputedStyle(firstItem).display;
+                const isExpanded = currentDisplay !== 'none';
+                console.log('Current display:', currentDisplay, 'isExpanded:', isExpanded);
+                
+                extraResources.forEach(item => {
+                    item.style.display = isExpanded ? 'none' : 'flex';
+                });
+                toggleResourcesBtn.textContent = isExpanded ? '▼' : '▲';
+                toggleResourcesBtn.classList.toggle('expanded', !isExpanded);
+            });
+        } else {
+            console.warn('toggleResourcesBtn not found');
+        }
+        
+        const headerMenuBtn = document.getElementById('headerMenuBtn');
+        const headerMenuDropdown = document.getElementById('headerMenuDropdown');
+        if (headerMenuBtn && headerMenuDropdown) {
+            headerMenuBtn.type = 'button';
+            headerMenuBtn.style.cursor = 'pointer';
+            headerMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log('Menu button clicked');
+                const currentDisplay = window.getComputedStyle(headerMenuDropdown).display;
+                const isVisible = currentDisplay !== 'none';
+                console.log('Current dropdown display:', currentDisplay, 'isVisible:', isVisible);
+                headerMenuDropdown.style.display = isVisible ? 'none' : 'flex';
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (headerMenuBtn && headerMenuDropdown && 
+                    !headerMenuBtn.contains(e.target) && 
+                    !headerMenuDropdown.contains(e.target)) {
+                    headerMenuDropdown.style.display = 'none';
+                }
+            });
+        } else {
+            console.warn('headerMenuBtn or headerMenuDropdown not found', { headerMenuBtn, headerMenuDropdown });
+        }
         
         attachButtonListener('helpBtn', () => {
             hideSettingsModal();
@@ -1531,20 +1590,32 @@ Conversation History: ${window.GameState.conversationHistory.length}
         if (typeof window.GameState.currentHour !== 'number') {
             window.GameState.currentHour = 9;
         }
+        if (window.GameState.currentMinute === undefined) {
+            window.GameState.currentMinute = 0;
+        }
         
-        const hour = window.GameState.currentHour;
-    const isPM = hour >= 12;
-    const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-    const period = isPM ? 'PM' : 'AM';
-    const timeString = `${displayHour}:00 ${period}`;
+        // Ensure hour is always an integer
+        const hour = Math.floor(window.GameState.currentHour || 9);
+        const minute = Math.floor(window.GameState.currentMinute || 0);
+        const isPM = hour >= 12;
+        const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+        const period = isPM ? 'PM' : 'AM';
+        const minuteStr = minute.toString().padStart(2, '0');
+        const timeString = `${displayHour}:${minuteStr} ${period}`;
     
-    const clockElement = document.getElementById('gameClock');
-    const clockIcon = document.querySelector('.clock-icon');
-    const clockDisplay = document.querySelector('.clock-display');
+        const clockElement = document.getElementById('gameClock');
+        const clockIcon = document.querySelector('.clock-icon');
+        const clockDisplay = document.querySelector('.clock-display');
+        const visualClock = document.querySelector('.visual-clock');
     
-    if (clockElement) {
-        clockElement.textContent = timeString;
-    }
+        if (clockElement) {
+            clockElement.textContent = timeString;
+        }
+        
+        // Update visual clock animation if it exists
+        if (visualClock) {
+            updateVisualClock(hour, minute);
+        }
     
     // Calculate remaining work hours (work day: 9 AM to 6 PM = 9 hours)
     const workDayStart = 9;
@@ -1579,6 +1650,27 @@ Conversation History: ${window.GameState.conversationHistory.length}
         const hoursIndicator = clockDisplay.querySelector('.hours-remaining');
         if (hoursIndicator) {
             hoursIndicator.remove();
+        }
+    }
+    
+    // Add pause indicator when timer is waiting for player input
+    if (clockDisplay) {
+        const isPaused = window.currentConversation !== null;
+        const hasUnreadNotifications = window.GameState.conversationQueue && window.GameState.conversationQueue.length > 0;
+        const shouldShowIndicator = isPaused || hasUnreadNotifications;
+        
+        let pauseIndicator = clockDisplay.querySelector('.clock-pause-indicator');
+        
+        if (shouldShowIndicator) {
+            if (!pauseIndicator) {
+                pauseIndicator = document.createElement('span');
+                pauseIndicator.className = 'clock-pause-indicator';
+                clockDisplay.appendChild(pauseIndicator);
+            }
+            pauseIndicator.textContent = '📬 You have unread notifications';
+            pauseIndicator.style.display = 'inline-flex';
+        } else if (pauseIndicator) {
+            pauseIndicator.remove();
         }
     }
 }

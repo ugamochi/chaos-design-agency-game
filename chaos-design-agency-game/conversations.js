@@ -186,21 +186,51 @@ const ConversationsModule = (function() {
                 return;
             }
 
-            const player = window.GameState.team.find(m => m.id === 'player');
-            if (player) {
-                const hoursSpent = 1.5;
-                const hoursBefore = player.hours || 0;
-                player.hours = (player.hours || 0) - hoursSpent;
-                
-                if (player.hours < 0) {
-                    const overtimeHours = Math.abs(player.hours);
-                    const burnoutIncrease = Math.floor(overtimeHours * 3);
-                    if (player.burnout !== undefined) {
-                        player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
+            // Advance time by 0.5 hours when replying to message
+            // This deducts hours from player and workers, and moves clock forward
+            if (window.advanceTimeByHours) {
+                window.advanceTimeByHours(0.5);
+            } else {
+                // Fallback if timer not initialized
+                // Use same burnout calculation as timer (0.1x per hour) for consistency
+                const player = window.GameState.team.find(m => m.id === 'player');
+                if (player) {
+                    const hoursSpent = 0.5;
+                    const hoursBefore = player.hours || 0;
+                    const wasInOvertime = hoursBefore < 0;
+                    player.hours = hoursBefore - hoursSpent;
+                    
+                    const isNowInOvertime = player.hours < 0;
+                    if (isNowInOvertime) {
+                        // Calculate burnout only for new overtime hours
+                        let burnoutIncrease = 0;
+                        if (!wasInOvertime) {
+                            // Just entered overtime - calculate for hours that pushed into negative
+                            const hoursIntoOvertime = Math.abs(player.hours);
+                            burnoutIncrease = Math.floor(hoursIntoOvertime * 0.1);
+                        } else {
+                            // Already in overtime - calculate only for additional hours
+                            burnoutIncrease = Math.floor(hoursSpent * 0.1);
+                        }
+                        
+                        if (player.burnout !== undefined && burnoutIncrease > 0) {
+                            player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
+                        }
                     }
                 }
-                
-                window.displayGameState();
+                // Update time using minutes to avoid decimal hours
+                if (window.GameState.currentMinute === undefined) {
+                    window.GameState.currentMinute = 0;
+                }
+                window.GameState.currentMinute += 30; // 0.5 hours = 30 minutes
+                if (window.GameState.currentMinute >= 60) {
+                    const hoursToAdd = Math.floor(window.GameState.currentMinute / 60);
+                    window.GameState.currentMinute = window.GameState.currentMinute % 60;
+                    window.GameState.currentHour = Math.floor((window.GameState.currentHour || 9) + hoursToAdd);
+                } else {
+                    window.GameState.currentHour = Math.floor(window.GameState.currentHour || 9);
+                }
+                window.updateClock();
             }
 
             recordConversationResponse(currentConversation);

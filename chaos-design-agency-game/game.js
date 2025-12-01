@@ -91,6 +91,11 @@ const GameModule = (function() {
         }
         window.setupEventListeners();
         window.initTutorial();
+        
+        // Start real-time game timer (1 hour = 1 second)
+        if (window.startGameTimer) {
+            window.startGameTimer();
+        }
     }
 
     function initializeRandomTeam() {
@@ -222,6 +227,15 @@ const GameModule = (function() {
             setTimeout(() => feedbackElement.remove(), 300);
         }
 
+        // With real-time timer, manually advance by 8 hours (full work day)
+        // This is a manual override option
+        if (window.advanceTimeByHours) {
+            window.advanceTimeByHours(8);
+            window.showInfoToast('⏩ Manually advanced 8 hours', 2000);
+            return;
+        }
+
+        // Fallback if timer not available
         window.GameState.currentDay++;
         window.advanceClock();
 

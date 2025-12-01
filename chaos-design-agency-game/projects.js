@@ -75,6 +75,12 @@ const ProjectsModule = (function() {
             player.burnout = 0;
         }
 
+        // Scale changes to tick rate: timer ticks every 0.1 hours, work day is 8 hours
+        // So we need to scale daily changes by (0.1 / 8) = 0.0125
+        const HOURS_PER_TICK = 0.1;
+        const HOURS_PER_DAY = 8;
+        const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125
+
         let burnoutChange = 0;
 
         const assignedProjects = window.GameState.projects.filter(p => 
@@ -114,6 +120,8 @@ const ProjectsModule = (function() {
             burnoutChange -= 2;
         }
 
+        // Scale the change to tick rate
+        burnoutChange *= tickMultiplier;
         player.burnout = Math.max(0, Math.min(100, player.burnout + burnoutChange));
 
         if (player.burnout >= 80 && !player.highBurnoutTriggered) {
@@ -127,6 +135,11 @@ const ProjectsModule = (function() {
     function updateTeamMorale() {
         const player = window.GameState.team.find(m => m.id === 'player');
         const playerBurnout = player ? (player.burnout || 0) : 0;
+
+        // Scale changes to tick rate: timer ticks every 0.1 hours, work day is 8 hours
+        const HOURS_PER_TICK = 0.1;
+        const HOURS_PER_DAY = 8;
+        const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125
 
         window.GameState.team.forEach(member => {
         if (member.id === 'player') return;
@@ -142,7 +155,12 @@ const ProjectsModule = (function() {
         
         if (characteristics.doesNotLoseMorale) {
             if (member.currentAssignment) {
-                member.daysOnAssignment++;
+                // Only increment days on assignment once per day, not per tick
+                // Track this separately or check if we've crossed a day boundary
+                if (!member._lastDayCheck || member._lastDayCheck !== window.GameState.currentDay) {
+                    member.daysOnAssignment++;
+                    member._lastDayCheck = window.GameState.currentDay;
+                }
             }
             return;
         }
@@ -162,15 +180,21 @@ const ProjectsModule = (function() {
             moraleChange -= 2;
         }
 
+        // Scale the change to tick rate
+        moraleChange *= tickMultiplier;
         window.adjustMemberMorale(member, moraleChange);
         
         if (member.morale && typeof member.morale.current === 'number') {
-            const gradualDecay = -0.5;
+            const gradualDecay = -0.5 * tickMultiplier;
             window.adjustMemberMorale(member, gradualDecay);
         }
 
         if (member.currentAssignment) {
-            member.daysOnAssignment++;
+            // Only increment days on assignment once per day, not per tick
+            if (!member._lastDayCheck || member._lastDayCheck !== window.GameState.currentDay) {
+                member.daysOnAssignment++;
+                member._lastDayCheck = window.GameState.currentDay;
+            }
         }
 
         if (!member.morale || typeof member.morale.current !== 'number') {
@@ -194,7 +218,10 @@ const ProjectsModule = (function() {
     });
     
         if (player && !player.currentAssignment && !player.isIll) {
-            const playerMoraleChange = -1;
+            const HOURS_PER_TICK = 0.1;
+            const HOURS_PER_DAY = 8;
+            const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY;
+            const playerMoraleChange = -1 * tickMultiplier;
             if (player.morale && typeof player.morale.current === 'number') {
                 window.adjustMemberMorale(player, playerMoraleChange);
             }
@@ -835,9 +862,13 @@ const ProjectsModule = (function() {
             totalEfficiency += freelancerEfficiency * (freelancerSkill / 5) * 1.5; // 1.5x multiplier
         }
         
-        // Calculate daily progress
-        const dailyProgress = baseProgress * totalEfficiency;
-        phase.progress = Math.min(1.0, phase.progress + dailyProgress);
+        // Calculate progress per tick (timer ticks every 0.1 seconds = 0.1 hours)
+        // Scale daily progress to tick-based: (0.1 hours / 8 hours per day) = 0.0125
+        const HOURS_PER_TICK = 0.1;
+        const HOURS_PER_DAY = 8;
+        const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125
+        const tickProgress = baseProgress * totalEfficiency * tickMultiplier;
+        phase.progress = Math.min(1.0, phase.progress + tickProgress);
         
         // Update hours completed
         phase.hoursCompleted = phase.progress * phase.hoursRequired;
@@ -937,10 +968,16 @@ const ProjectsModule = (function() {
     }
 
     function updateProjects() {
+        // Check if real-time timer is running - if so, skip hour deduction (timer handles it)
+        const isRealTimeMode = window.isTimerRunning && window.isTimerRunning();
+        
         // Reset hours deduction flag at start of project updates (once per day)
-        window.GameState.team.forEach(member => {
-            member._hoursDeductedToday = false;
-        });
+        // Only reset if not in real-time mode (real-time mode doesn't use this flag)
+        if (!isRealTimeMode) {
+            window.GameState.team.forEach(member => {
+                member._hoursDeductedToday = false;
+            });
+        }
         
         window.GameState.projects.forEach(project => {
         if (project.status === 'active' || project.status === 'ok' || project.status === 'warning' || project.status === 'crisis') {
@@ -1023,58 +1060,72 @@ const ProjectsModule = (function() {
                 const hoursWorkedThisWeek = member.hoursWorkedThisWeek || 0;
                 const currentHours = member.hours || 0;
                 
-                if (member.id === 'player') {
-                    const totalPlayerProjects = playerProjects + 1;
-                    // Player can work even with 0 or negative hours (overtime)
-                    if (currentHours > 0) {
-                        const hoursPerProject = currentHours / totalPlayerProjects;
-                        hoursToSpend = Math.min(hoursPerProject, currentHours) * statusMultiplier;
-                    } else {
-                        // Overtime: player can still work at full efficiency, but gets burnout penalty
-                        hoursToSpend = (maxDailyHours / totalPlayerProjects) * statusMultiplier;
-                    }
+                if (isRealTimeMode) {
+                    // In real-time mode, calculate progress based on hours already worked
+                    // Timer ticks every 0.1 seconds (100ms) and advances 0.1 hours per tick
+                    // So we should add 0.1 hours of work per tick, not 1.0
+                    const HOURS_PER_TICK = 0.1; // Match timer.js HOURS_PER_TICK
+                    hoursToSpend = HOURS_PER_TICK * statusMultiplier;
                 } else {
-                    const maxHoursToSpend = maxDailyHours * statusMultiplier;
-                    if (currentHours > 0) {
-                        hoursToSpend = Math.min(currentHours, maxHoursToSpend);
+                    // Legacy mode: calculate hours to spend based on available hours
+                    if (member.id === 'player') {
+                        const totalPlayerProjects = playerProjects + 1;
+                        // Player can work even with 0 or negative hours (overtime)
+                        if (currentHours > 0) {
+                            const hoursPerProject = currentHours / totalPlayerProjects;
+                            hoursToSpend = Math.min(hoursPerProject, currentHours) * statusMultiplier;
+                        } else {
+                            // Overtime: player can still work at full efficiency, but gets burnout penalty
+                            hoursToSpend = (maxDailyHours / totalPlayerProjects) * statusMultiplier;
+                        }
                     } else {
-                        hoursToSpend = maxHoursToSpend * 0.5;
+                        const maxHoursToSpend = maxDailyHours * statusMultiplier;
+                        if (currentHours > 0) {
+                            hoursToSpend = Math.min(currentHours, maxHoursToSpend);
+                        } else {
+                            hoursToSpend = maxHoursToSpend * 0.5;
+                        }
                     }
                 }
                 
                 if (hoursToSpend > 0) {
-                    const newHoursWorked = hoursWorkedThisWeek + hoursToSpend;
-                    member.hoursWorkedThisWeek = newHoursWorked;
-                    
-                    const wasOvertime = currentHours <= 0;
-                    const hoursBefore = currentHours;
-                    member.hours = currentHours - hoursToSpend;
-                    
-                    if (member.id === 'player') {
-                        // Player can work beyond 40 hours, but each extra hour costs 5% burnout
-                        if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                            const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
-                            const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                            const newOvertime = overtimeHours - previousOvertime;
-                            
-                            if (newOvertime > 0 || wasOvertime) {
-                                const burnoutIncrease = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 5);
-                                if (member.burnout !== undefined) {
-                                    member.burnout = Math.min(100, (member.burnout || 0) + burnoutIncrease);
+                    // Only deduct hours and update hoursWorkedThisWeek in legacy mode
+                    // In real-time mode, timer handles hour deduction
+                    if (!isRealTimeMode) {
+                        const newHoursWorked = hoursWorkedThisWeek + hoursToSpend;
+                        member.hoursWorkedThisWeek = newHoursWorked;
+                        
+                        const wasOvertime = currentHours <= 0;
+                        const hoursBefore = currentHours;
+                        member.hours = currentHours - hoursToSpend;
+                        
+                        // Apply overtime penalties
+                        if (member.id === 'player') {
+                            // Player can work beyond 40 hours, but each extra hour costs 5% burnout
+                            if (newHoursWorked > baseWeeklyHours || wasOvertime) {
+                                const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
+                                const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
+                                const newOvertime = overtimeHours - previousOvertime;
+                                
+                                if (newOvertime > 0 || wasOvertime) {
+                                    const burnoutIncrease = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 5);
+                                    if (member.burnout !== undefined) {
+                                        member.burnout = Math.min(100, (member.burnout || 0) + burnoutIncrease);
+                                    }
                                 }
                             }
-                        }
-                    } else {
-                        // Non-player members: overtime affects morale
-                        if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                            const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
-                            const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                            const newOvertime = overtimeHours - previousOvertime;
-                            
-                            if (newOvertime > 0 || wasOvertime) {
-                                const moralePenalty = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 3);
-                                if (member.morale && typeof member.morale.current === 'number') {
-                                    window.adjustMemberMorale(member, -moralePenalty);
+                        } else {
+                            // Non-player members: overtime affects morale
+                            if (newHoursWorked > baseWeeklyHours || wasOvertime) {
+                                const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
+                                const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
+                                const newOvertime = overtimeHours - previousOvertime;
+                                
+                                if (newOvertime > 0 || wasOvertime) {
+                                    const moralePenalty = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 3);
+                                    if (member.morale && typeof member.morale.current === 'number') {
+                                        window.adjustMemberMorale(member, -moralePenalty);
+                                    }
                                 }
                             }
                         }
