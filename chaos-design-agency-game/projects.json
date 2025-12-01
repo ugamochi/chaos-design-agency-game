@@ -1,0 +1,158 @@
+[
+  {
+    "id": "techcorp_web",
+    "name": "Neon Meridian Portal Refresh",
+    "client": "Neon Meridian Labs",
+    "type": "website",
+    "budget": 18000,
+    "totalWeeks": 7,
+    "complexity": 4,
+    "description": "Psychedelic corporate portal bridging three timelines with reactive glyphs.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.78,
+    "clientProfile": {
+      "name": "Dr. Lyra Quell",
+      "title": "Chief Chronologist",
+      "company": "Neon Meridian Labs",
+      "personality": "demanding_but_fair",
+      "traits": {
+        "decisionSpeed": "slow",
+        "budgetReality": "generous",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "direct",
+        "respectForProcess": "high"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.3,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.1
+      }
+    }
+  },
+  {
+    "id": "startupx_branding",
+    "name": "Mythic Mango Identity Brew",
+    "client": "Mythic Mango Collective",
+    "type": "branding",
+    "budget": 13500,
+    "totalWeeks": 9,
+    "complexity": 3,
+    "description": "Immersive multi-sensory brand kit packaged as ritual recipe cards.",
+    "requiredSkills": ["design"],
+    "baseClientSatisfaction": 0.74,
+    "clientProfile": {
+      "name": "Aurora Lam",
+      "title": "Dream Distiller",
+      "company": "Mythic Mango Collective",
+      "personality": "visionary",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "champagne_dreams",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "inspirational",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.45,
+        "meetingDeadlines": 0.15,
+        "responsiveness": 0.25,
+        "stayingInBudget": 0.15
+      }
+    }
+  },
+  {
+    "id": "enterprise_app",
+    "name": "Orbital Council Command Deck",
+    "client": "Orbital Council Consortium",
+    "type": "application",
+    "budget": 30000,
+    "totalWeeks": 11,
+    "complexity": 5,
+    "description": "Interplanetary committee control deck with ceremonial data rituals.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.82,
+    "clientProfile": {
+      "name": "Commodore Elan Voss",
+      "title": "Harmonizer of Ministries",
+      "company": "Orbital Council Consortium",
+      "personality": "committee_runner",
+      "traits": {
+        "decisionSpeed": "slow",
+        "budgetReality": "generous",
+        "scopeDiscipline": "medium",
+        "communicationStyle": "formal",
+        "respectForProcess": "high"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.2,
+        "meetingDeadlines": 0.45,
+        "responsiveness": 0.15,
+        "stayingInBudget": 0.2
+      }
+    }
+  },
+  {
+    "id": "greenleaf_rebrand",
+    "name": "GreenLeaf Eco-Rebrand",
+    "client": "GreenLeaf Co.",
+    "type": "rebrand",
+    "budget": 25000,
+    "totalWeeks": 10,
+    "complexity": 4,
+    "description": "Complete rebrand and website for sustainable products company.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.75,
+    "clientProfile": {
+      "name": "Marcus Chen",
+      "title": "Founder",
+      "company": "GreenLeaf Co.",
+      "personality": "balanced",
+      "traits": {
+        "decisionSpeed": "medium",
+        "budgetReality": "reasonable",
+        "scopeDiscipline": "medium",
+        "communicationStyle": "friendly",
+        "respectForProcess": "medium"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.35,
+        "meetingDeadlines": 0.3,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.15
+      }
+    }
+  },
+  {
+    "id": "small_business_site",
+    "name": "Candlelight Nook Storysite",
+    "client": "Candlelight Nook & Co.",
+    "type": "website",
+    "budget": 6500,
+    "totalWeeks": 5,
+    "complexity": 1,
+    "description": "Whimsical storybook microsite with hand-inked divination contact form.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.68,
+    "clientProfile": {
+      "name": "Etta Bloom",
+      "title": "Keeper of Cozy Things",
+      "company": "Candlelight Nook & Co.",
+      "personality": "budget_watch",
+      "traits": {
+        "decisionSpeed": "medium",
+        "budgetReality": "strict",
+        "scopeDiscipline": "strong",
+        "communicationStyle": "friendly",
+        "respectForProcess": "medium"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.3,
+        "meetingDeadlines": 0.2,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.3
+      }
+    }
+  }
+]
+

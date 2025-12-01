@@ -1,0 +1,117 @@
+[
+  {
+    "id": "player",
+    "name": "You",
+    "role": "Art Director",
+    "skill": 5,
+    "personality": {
+      "type": "leader",
+      "traits": ["versatile", "multi_tasker", "decision_maker"],
+      "quirks": ["can_work_multiple_projects", "reduced_efficiency_when_split"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -3,
+        "successful_project": 5,
+        "team_conflict": -10
+      }
+    },
+    "dialogue": {
+      "happy": ["Team is doing great!", "This is going well"],
+      "neutral": ["Managing things", "Keeping on track"],
+      "stressed": ["Too much to handle", "Need to prioritize"],
+      "burned_out": ["I'm exhausted", "Can't keep this up"]
+    }
+  },
+  {
+    "id": "mike_designer",
+    "name": "Mike",
+    "role": "Designer",
+    "skill": 4,
+    "personality": {
+      "type": "perfectionist",
+      "traits": ["slow", "high_quality", "sensitive_to_criticism"],
+      "quirks": ["always_late_to_meetings", "coffee_addict", "requests_extensions"]
+    },
+    "morale": {
+      "current": 75,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -5,
+        "praised": 10,
+        "criticized": -15,
+        "rushed_work": -8,
+        "time_to_polish": 5
+      }
+    },
+    "dialogue": {
+      "happy": ["Loving this project!", "This is coming together nicely"],
+      "neutral": ["Making progress...", "Should have this done soon"],
+      "stressed": ["This is a lot...", "I'm struggling with this"],
+      "burned_out": ["I can't do this anymore", "I need a break"]
+    }
+  },
+  {
+    "id": "sarah_developer",
+    "name": "Sarah",
+    "role": "Developer",
+    "skill": 4,
+    "personality": {
+      "type": "pragmatic",
+      "traits": ["fast", "practical", "low_ego", "independent"],
+      "quirks": ["suggests_scope_cuts", "gets_bored_easy", "works_independently"]
+    },
+    "morale": {
+      "current": 80,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -4,
+        "challenging_work": 8,
+        "boring_project": -6,
+        "independence": 5,
+        "micromanaged": -10
+      }
+    },
+    "dialogue": {
+      "happy": ["This is interesting work", "Making good progress"],
+      "neutral": ["It's fine", "Getting it done"],
+      "stressed": ["This is getting repetitive", "Need more challenge"],
+      "burned_out": ["I'm considering other options", "Not feeling motivated"]
+    }
+  },
+  {
+    "id": "alex_junior",
+    "name": "Alex",
+    "role": "Junior Designer",
+    "skill": 2,
+    "personality": {
+      "type": "eager",
+      "traits": ["inconsistent", "needs_guidance", "creative_ideas"],
+      "quirks": ["makes_mistakes", "brilliant_ideas_rare", "needs_encouragement"]
+    },
+    "morale": {
+      "current": 70,
+      "min": 0,
+      "max": 100,
+      "modifiers": {
+        "overworked": -6,
+        "praised": 12,
+        "criticized": -20,
+        "mentored": 8,
+        "ignored": -5
+      }
+    },
+    "dialogue": {
+      "happy": ["This is so exciting!", "I'm learning so much"],
+      "neutral": ["Working on it", "Hope this is right"],
+      "stressed": ["I'm not sure about this", "Can someone help?"],
+      "burned_out": ["I feel lost", "I don't think I'm good enough"]
+    }
+  }
+]
+
