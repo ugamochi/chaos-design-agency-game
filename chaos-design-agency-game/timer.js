@@ -112,7 +112,8 @@ const TimerModule = (function() {
 
         // Deduct hours from team members in real-time
         // Each tick is 0.1 hours, so deduct 0.1 hours per tick
-        deductHoursFromTeam(HOURS_PER_TICK);
+        // Regular clock running cannot cause debt (allowDebt = false)
+        deductHoursFromTeam(HOURS_PER_TICK, false);
 
         // Update projects based on time elapsed
         window.updateProjects();
@@ -141,7 +142,7 @@ const TimerModule = (function() {
         }
     }
 
-    function deductHoursFromTeam(hoursToDeduct) {
+    function deductHoursFromTeam(hoursToDeduct, allowDebt = false) {
         window.GameState.team.forEach(member => {
             if (member.isIll || member.hasQuit) {
                 return; // Skip ill or quit members
@@ -157,16 +158,26 @@ const TimerModule = (function() {
 
             // Deduct hours
             const currentHours = member.hours || 40;
-            const newHours = currentHours - hoursToDeduct;
+            let newHours = currentHours - hoursToDeduct;
+            let actualHoursDeducted = hoursToDeduct;
+            
+            // For player: only allow debt (negative hours) from message events, not regular clock
+            // Regular clock cannot push you from positive/zero into debt, but can make existing debt worse
+            if (isPlayer && !allowDebt && currentHours >= 0 && newHours < 0) {
+                // Prevent going from positive/zero into debt during regular clock
+                // Calculate actual hours deducted (only what was available)
+                actualHoursDeducted = currentHours;
+                newHours = 0;
+            }
             
             // Update hours
             member.hours = newHours;
             
-            // Track hours worked this week
+            // Track hours worked this week (use actual hours deducted, not the full amount)
             if (member.hoursWorkedThisWeek === undefined) {
                 member.hoursWorkedThisWeek = 0;
             }
-            member.hoursWorkedThisWeek += hoursToDeduct;
+            member.hoursWorkedThisWeek += actualHoursDeducted;
 
             // Handle overtime for player
             // Calculate burnout only for hours worked while in overtime
@@ -246,6 +257,7 @@ const TimerModule = (function() {
                 window.resetDailyHours();
             }
 
+            window.GameState.shownConversationsToday = [];
             window.purgeDeferredConversations();
             window.checkForIllness();
             
@@ -261,7 +273,8 @@ const TimerModule = (function() {
         }
 
         // Deduct hours from team
-        deductHoursFromTeam(hours);
+        // Message events can cause debt (allowDebt = true)
+        deductHoursFromTeam(hours, true);
 
         // Update game state
         window.updateProjects();

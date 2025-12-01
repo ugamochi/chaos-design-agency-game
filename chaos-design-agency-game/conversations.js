@@ -83,6 +83,12 @@ const ConversationsModule = (function() {
         });
     }
 
+    const ALLOWED_REPEAT_CONVERSATIONS = [
+        'lunch_break_reminder',
+        'bedtime_reminder',
+        'exercise_reminder'
+    ];
+
     function getCurrentConversations() {
         if (!Array.isArray(window.AllConversations)) {
             return [];
@@ -94,7 +100,11 @@ const ConversationsModule = (function() {
 
             const notResolved = !window.GameState.resolvedConversations.includes(conv.id);
 
-            return matchesTime && notResolved;
+            const notShownToday = !window.GameState.shownConversationsToday || 
+                                 !window.GameState.shownConversationsToday.includes(conv.id) ||
+                                 ALLOWED_REPEAT_CONVERSATIONS.includes(conv.id);
+
+            return matchesTime && notResolved && notShownToday;
         });
     }
 
@@ -107,6 +117,15 @@ const ConversationsModule = (function() {
         return shuffled;
     }
 
+    function markConversationAsShown(conversationId) {
+        if (!window.GameState.shownConversationsToday) {
+            window.GameState.shownConversationsToday = [];
+        }
+        if (!window.GameState.shownConversationsToday.includes(conversationId)) {
+            window.GameState.shownConversationsToday.push(conversationId);
+        }
+    }
+
     function checkForConversations() {
         let conversations = getCurrentConversations().filter(conv => !isConversationDeferred(conv.id));
 
@@ -117,12 +136,15 @@ const ConversationsModule = (function() {
                 queueConversation(conv.id);
             });
 
-            window.displayConversation(conversations[0]);
+            const conversationToShow = conversations[0];
+            markConversationAsShown(conversationToShow.id);
+            window.displayConversation(conversationToShow);
         } else if (window.GameState.conversationQueue.length > 0 && window.currentConversation === null) {
             const nextConvId = window.GameState.conversationQueue.shift();
             if (Array.isArray(window.AllConversations)) {
                 const nextConv = window.AllConversations.find(c => c && c.id === nextConvId);
                 if (nextConv) {
+                    markConversationAsShown(nextConv.id);
                     window.displayConversation(nextConv);
                 }
             }
@@ -130,7 +152,8 @@ const ConversationsModule = (function() {
     }
 
     function queueConversation(conversationId) {
-        if (!window.GameState.conversationQueue.includes(conversationId)) {
+        if (!window.GameState.conversationQueue.includes(conversationId) && 
+            !window.GameState.resolvedConversations.includes(conversationId)) {
             window.GameState.conversationQueue.push(conversationId);
             window.updateNotificationBadge();
         }
@@ -139,6 +162,16 @@ const ConversationsModule = (function() {
     function handleChoice(conversationId, choiceId) {
         if (!currentConversation || currentConversation.id !== conversationId) {
             console.warn('Conversation mismatch or no active conversation');
+            return;
+        }
+
+        // Prevent changing choice if response is already sent
+        if (isSubmitting) {
+            return;
+        }
+        
+        const conversationContainer = document.querySelector('.conversation-container');
+        if (conversationContainer && conversationContainer.classList.contains('response-sent')) {
             return;
         }
 
@@ -231,6 +264,46 @@ const ConversationsModule = (function() {
                     window.GameState.currentHour = Math.floor(window.GameState.currentHour || 9);
                 }
                 window.updateClock();
+            }
+
+            // Update UI to show response is sent and locked
+            const conversationContainer = document.querySelector('.conversation-container');
+            if (conversationContainer) {
+                conversationContainer.classList.add('response-sent');
+                
+                // Disable all choice buttons
+                const choiceButtons = document.querySelectorAll('.choice-btn');
+                choiceButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.cursor = 'not-allowed';
+                    btn.style.opacity = '0.6';
+                    if (btn.dataset.choiceId === selectedChoiceId) {
+                        btn.classList.add('sent-choice');
+                    } else {
+                        btn.style.opacity = '0.4';
+                    }
+                });
+                
+                // Update send button to show sent state
+                if (sendBtn) {
+                    sendBtn.textContent = '✓ Response Sent';
+                    sendBtn.classList.add('response-sent-btn');
+                    sendBtn.style.cursor = 'default';
+                }
+                
+                // Disable remind button
+                const remindBtn = document.querySelector('.remind-btn');
+                if (remindBtn) {
+                    remindBtn.disabled = true;
+                    remindBtn.style.opacity = '0.6';
+                    remindBtn.style.cursor = 'not-allowed';
+                }
+                
+                // Add visual indicator
+                const responseIndicator = document.createElement('div');
+                responseIndicator.className = 'response-sent-indicator';
+                responseIndicator.innerHTML = '⏱️ Response sent - Clock is running';
+                conversationContainer.insertBefore(responseIndicator, conversationContainer.querySelector('.conversation-actions'));
             }
 
             recordConversationResponse(currentConversation);
@@ -355,9 +428,9 @@ const ConversationsModule = (function() {
                 const roll = Math.random();
                 const success = roll <= chance;
                 if (success) {
-                    chanceResults.success.push(`Client satisfaction roll: ${Math.round(roll * 100)}% <= ${Math.round(chance * 100)}% ✓`);
+                    chanceResults.success.push(`Client reputation roll: ${Math.round(roll * 100)}% <= ${Math.round(chance * 100)}% ✓`);
                 } else {
-                    chanceResults.failure.push(`Client satisfaction roll: ${Math.round(roll * 100)}% > ${Math.round(chance * 100)}% ✗`);
+                    chanceResults.failure.push(`Client reputation roll: ${Math.round(roll * 100)}% > ${Math.round(chance * 100)}% ✗`);
                     shouldApply = false;
                 }
             }
@@ -418,9 +491,15 @@ const ConversationsModule = (function() {
                     type: 'error',
                     timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
                 });
+                // Remove from all projects and their phases
                 window.GameState.projects.forEach(project => {
-                    if (project.teamAssigned && project.teamAssigned.includes(memberId)) {
-                        project.teamAssigned = project.teamAssigned.filter(id => id !== memberId);
+                    if (window.removeTeamMemberFromProject) {
+                        window.removeTeamMemberFromProject(memberId, project.id);
+                    } else {
+                        // Fallback if function not available
+                        if (project.teamAssigned && project.teamAssigned.includes(memberId)) {
+                            project.teamAssigned = project.teamAssigned.filter(id => id !== memberId);
+                        }
                     }
                 });
                 window.recalculateTeamMorale();
@@ -567,11 +646,11 @@ const ConversationsModule = (function() {
         const eventMap = {
             low_morale: `team_low_morale_${member.id}`,
             high_morale: `team_high_morale_${member.id}`,
-            perfectionist_polish: 'mike_extension_request',
-            pragmatic_scope: 'sarah_scope_suggestion',
-            eager_help: 'alex_needs_help',
+            perfectionist_polish: 'tanue_extension_request',
+            pragmatic_scope: 'pasha_scope_suggestion',
+            eager_help: 'sasha_needs_help',
             eager_conflict: 'team_conflict',
-            eager_brilliant: 'alex_brilliant_idea'
+            eager_brilliant: 'sasha_brilliant_idea'
         };
 
         const conversationId = eventMap[eventType];
@@ -579,6 +658,11 @@ const ConversationsModule = (function() {
             console.log(`Team event triggered without conversation: ${eventType}`);
             return;
         }
+        
+        if (window.GameState.resolvedConversations.includes(conversationId)) {
+            return;
+        }
+        
         queueConversation(conversationId);
     }
 
@@ -604,10 +688,10 @@ const ConversationsModule = (function() {
             }
         });
 
-        const mike = window.getTeamMemberById('mike_designer');
-        const alex = window.getTeamMemberById('alex_junior');
-        if (mike && alex && mike.currentAssignment && mike.currentAssignment === alex.currentAssignment && Math.random() < 0.03) {
-            triggerTeamEvent(mike, 'eager_conflict');
+        const tanue = window.getTeamMemberById('tanue_designer');
+        const sasha = window.getTeamMemberById('sasha_junior');
+        if (tanue && sasha && tanue.currentAssignment && tanue.currentAssignment === sasha.currentAssignment && Math.random() < 0.03) {
+            triggerTeamEvent(tanue, 'eager_conflict');
         }
     }
 
@@ -684,7 +768,30 @@ const ConversationsModule = (function() {
             }
         }
 
-        if (avgSatisfaction > 50 && window.GameState.currentWeek >= 2 && window.GameState.currentWeek <= 10) {
+        // Guarantee new project messages in the first 4 days
+        if (window.GameState.currentWeek === 1 && window.GameState.currentDay >= 1 && window.GameState.currentDay <= 4) {
+            const firstFourDaysProjectRequests = [
+                'new_project_request_small_business',
+                'new_project_request_startup',
+                'new_project_request_enterprise',
+                'new_project_request_rebrand'
+            ];
+            
+            // Get the project request for this specific day (day 1 = index 0, day 2 = index 1, etc.)
+            const dayIndex = window.GameState.currentDay - 1;
+            const projectRequestId = firstFourDaysProjectRequests[dayIndex];
+            
+            // Only add if not already resolved and not already in queue
+            if (projectRequestId && 
+                !resolved.includes(projectRequestId) && 
+                !window.GameState.conversationQueue.includes(projectRequestId)) {
+                conditionalConversations.push(projectRequestId);
+            }
+        }
+
+        // Regular new project requests (after first week or if satisfaction is good)
+        // Also allow in week 1 if satisfaction is good (for edge cases)
+        if (avgSatisfaction > 50 && window.GameState.currentWeek >= 1 && window.GameState.currentWeek <= 10) {
             const projectRequests = [
                 { id: 'new_project_request_enterprise', prob: 0.08, minWeek: 3, maxWeek: 9 },
                 { id: 'new_project_request_small_business', prob: 0.12, minWeek: 2, maxWeek: 10 },
@@ -703,10 +810,76 @@ const ConversationsModule = (function() {
         }
 
         conditionalConversations.forEach(convId => {
-            if (!window.GameState.conversationQueue.includes(convId) && !resolved.includes(convId)) {
+            const notInQueue = !window.GameState.conversationQueue.includes(convId);
+            const notResolved = !resolved.includes(convId);
+            const notShownToday = !window.GameState.shownConversationsToday || 
+                                 !window.GameState.shownConversationsToday.includes(convId) ||
+                                 ALLOWED_REPEAT_CONVERSATIONS.includes(convId);
+            
+            if (notInQueue && notResolved && notShownToday) {
                 queueConversation(convId);
             }
         });
+    }
+
+    function replaceHardcodedNames(conversation) {
+        if (!conversation) return conversation;
+
+        const replacements = {};
+
+        const getMemberById = (memberId) => {
+            return window.GameState.team.find(m => m.id === memberId) || 
+                   window.AllTeamMembers.find(m => m.id === memberId);
+        };
+
+        const tanue = getMemberById('tanue_designer');
+        const pasha = getMemberById('pasha_developer');
+        const sasha = getMemberById('sasha_junior');
+
+        if (tanue) {
+            replacements['Tanue'] = tanue.name;
+        }
+        if (pasha) {
+            replacements['Pasha'] = pasha.name;
+        }
+        if (sasha) {
+            replacements['Sasha'] = sasha.name;
+        }
+
+        if (Object.keys(replacements).length === 0) {
+            return conversation;
+        }
+
+        const result = { ...conversation };
+        
+        const replaceInText = (text) => {
+            if (!text || typeof text !== 'string') return text;
+            let replaced = text;
+            Object.entries(replacements).forEach(([oldName, newName]) => {
+                const regex = new RegExp(`\\b${oldName}\\b`, 'gi');
+                replaced = replaced.replace(regex, newName);
+            });
+            return replaced;
+        };
+
+        if (result.from) {
+            result.from = replaceInText(result.from);
+        }
+        if (result.body) {
+            result.body = replaceInText(result.body);
+        }
+        if (result.subject) {
+            result.subject = replaceInText(result.subject);
+        }
+        if (result.choices && Array.isArray(result.choices)) {
+            result.choices = result.choices.map(choice => ({
+                ...choice,
+                text: replaceInText(choice.text),
+                flavorText: replaceInText(choice.flavorText)
+            }));
+        }
+
+        return result;
     }
 
     function checkTeamPulse() {
@@ -750,7 +923,8 @@ const ConversationsModule = (function() {
                         }).join('<br>')}<br><br>
                         How do you want to respond?`
                     };
-                    window.displayConversation(dynamicConv);
+                    markConversationAsShown(pulseConv.id);
+                    window.displayConversation(replaceHardcodedNames(dynamicConv));
                 }
             }
         }
@@ -780,7 +954,8 @@ const ConversationsModule = (function() {
         checkTeamEvents,
         checkTeamPulse,
         getAverageClientSatisfaction,
-        checkConditionalConversations
+        checkConditionalConversations,
+        replaceHardcodedNames
     };
 })();
 
@@ -817,4 +992,5 @@ window.checkTeamEvents = ConversationsModule.checkTeamEvents;
 window.checkTeamPulse = ConversationsModule.checkTeamPulse;
 window.getAverageClientSatisfaction = ConversationsModule.getAverageClientSatisfaction;
 window.checkConditionalConversations = ConversationsModule.checkConditionalConversations;
+window.replaceHardcodedNames = ConversationsModule.replaceHardcodedNames;
 

@@ -36,6 +36,9 @@ const GameModule = (function() {
                 if (!window.GameState.gamePhase) window.GameState.gamePhase = 'tutorial';
                 if (typeof window.GameState.gameOver !== 'boolean') window.GameState.gameOver = false;
                 if (window.GameState.victoryPath === undefined) window.GameState.victoryPath = null;
+                if (!Array.isArray(window.GameState.shownConversationsToday)) {
+                    window.GameState.shownConversationsToday = [];
+                }
                 
                 console.log('Game state loaded from localStorage');
             } catch (error) {
@@ -185,30 +188,8 @@ const GameModule = (function() {
     }
 
     function seedInitialProjects() {
-        const techcorpTemplate = Array.isArray(window.AllProjectTemplates) 
-            ? window.AllProjectTemplates.find(t => t && t.id === 'techcorp_web')
-            : null;
-        const startupxTemplate = Array.isArray(window.AllProjectTemplates)
-            ? window.AllProjectTemplates.find(t => t && t.id === 'startupx_branding')
-            : null;
-
-        const techcorpWeeks = techcorpTemplate?.totalWeeks || 7;
-        const startupxWeeks = startupxTemplate?.totalWeeks || 9;
-
-        window.GameState.projects = [
-            window.buildProjectFromTemplate(techcorpTemplate || {}, {
-                id: 'proj-001',
-                progress: 0.6,
-                totalWeeks: techcorpWeeks,
-                weeksRemaining: techcorpWeeks
-            }),
-            window.buildProjectFromTemplate(startupxTemplate || {}, {
-                id: 'proj-002',
-                progress: 0.3,
-                totalWeeks: startupxWeeks,
-                weeksRemaining: startupxWeeks
-            })
-        ].map(project => window.hydrateProject(project));
+        // Start with no projects - new projects will come via conversations
+        window.GameState.projects = [];
     }
 
     function advanceDay() {
@@ -254,6 +235,7 @@ const GameModule = (function() {
             triggerScriptedEvents();
         }
 
+        window.GameState.shownConversationsToday = [];
         window.purgeDeferredConversations();
 
         const previousWeek = window.GameState.currentWeek - (window.GameState.currentDay === 1 ? 1 : 0);
@@ -391,12 +373,16 @@ const GameModule = (function() {
 
     function calculateScore() {
         const stats = window.GameState.gameStats;
+        const C = window.GameConstants || {};
+        const startingMoney = C.STARTING_MONEY || 8000;
+        const startingMorale = C.STARTING_MORALE || 65;
+        
         let score = 0;
 
         score += stats.projectsCompleted * 1000;
-        score += Math.max(0, window.GameState.money) / 10;
+        score += Math.max(0, window.GameState.money - startingMoney) / 10;
         score += (stats.totalSatisfactionPoints / Math.max(1, stats.projectsCompleted)) * 10;
-        score += window.GameState.teamMorale * 5;
+        score += Math.max(0, window.GameState.teamMorale - startingMorale) * 5;
         
         score += stats.perfectDeliveries * 500;
         score += stats.scopeCreepHandled * 200;
@@ -405,10 +391,20 @@ const GameModule = (function() {
         score -= stats.deadlinesMissed * 400;
         score -= stats.teamMemberQuits * 600;
 
-        const weekBonus = (12 - window.GameState.currentWeek) * 100;
-        score += Math.max(0, weekBonus);
-
         return Math.round(Math.max(0, score));
+    }
+
+    function getBestScore() {
+        const attemptsJson = localStorage.getItem('agencyChaosAttempts');
+        if (!attemptsJson) return 0;
+        
+        try {
+            const attempts = JSON.parse(attemptsJson);
+            return attempts.length > 0 ? Math.max(...attempts.map(attempt => attempt.score || 0)) : 0;
+        } catch (e) {
+            console.error('Error reading game attempts:', e);
+            return 0;
+        }
     }
 
     function getRankTitle(victoryPath, score) {
@@ -538,7 +534,14 @@ const GameModule = (function() {
             window.screenShake('heavy');
         }
         
-        const score = calculateScore();
+        let score = calculateScore();
+        
+        const C = window.GameConstants || {};
+        const totalWeeks = C.TOTAL_WEEKS || 12;
+        const weeksRemaining = Math.max(0, totalWeeks - window.GameState.currentWeek);
+        const weekBonus = weeksRemaining * 100;
+        score += weekBonus;
+        
         const rank = getRankTitle(window.GameState.victoryPath, score);
         const message = getEndGameMessage(endReason, window.GameState.victoryPath);
         
@@ -561,6 +564,7 @@ const GameModule = (function() {
         updateGameStats,
         calculateVictoryPath,
         calculateScore,
+        getBestScore,
         getRankTitle,
         getEndGameMessage,
         processWeeklyCosts,
@@ -580,6 +584,7 @@ window.checkFailureConditions = GameModule.checkFailureConditions;
 window.updateGameStats = GameModule.updateGameStats;
 window.calculateVictoryPath = GameModule.calculateVictoryPath;
 window.calculateScore = GameModule.calculateScore;
+window.getBestScore = GameModule.getBestScore;
 window.getRankTitle = GameModule.getRankTitle;
 window.getEndGameMessage = GameModule.getEndGameMessage;
 window.processWeeklyCosts = GameModule.processWeeklyCosts;

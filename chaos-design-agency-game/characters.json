@@ -27,11 +27,11 @@
     }
   },
   {
-    "id": "mike_designer",
+    "id": "tanue_designer",
     "name": "Tanue",
     "role": "Designer",
     "skill": 4,
-    "bio": "Perfectionist designer who never ships anything on time but the quality is always worth the wait. Lives on coffee and pixel-perfect details.",
+    "bio": "Perfectionist designer with zero tolerance for mediocrity. Would rather miss a deadline than ship something ugly. Lives on coffee and the tears of clients who 'just want something simple.'",
     "characteristics": {
       "oftenGetsIll": false,
       "canWorkWeekends": false,
@@ -57,18 +57,18 @@
       }
     },
     "dialogue": {
-      "happy": ["Loving this project!", "This is coming together nicely"],
-      "neutral": ["Making progress...", "Should have this done soon"],
-      "stressed": ["This is a lot...", "I'm struggling with this"],
-      "burned_out": ["I can't do this anymore", "I need a break"]
+      "happy": ["This project has Main Character Energy!", "Finally, a client with actual taste", "This is going to make other agencies jealous"],
+      "neutral": ["Polishing pixels to perfection...", "Good work takes time, deal with it"],
+      "stressed": ["I refuse to make ugly things to meet impossible deadlines", "This brief is insulting to my craft"],
+      "burned_out": ["I'd rather quit than ship garbage", "My soul dies a little every time someone says 'make it pop'"]
     }
   },
   {
-    "id": "sarah_developer",
+    "id": "pasha_developer",
     "name": "Pasha",
     "role": "Developer",
     "skill": 4,
-    "bio": "Pragmatic developer who gets things done fast. Prefers working alone and isn't afraid to suggest cutting scope when deadlines are tight.",
+    "bio": "No-bullshit developer who actually understands the difference between 'urgent' and 'important.' Will build anything technically feasible, but won't pretend stupid ideas are brilliant.",
     "characteristics": {
       "oftenGetsIll": false,
       "canWorkWeekends": true,
@@ -94,18 +94,18 @@
       }
     },
     "dialogue": {
-      "happy": ["This is interesting work", "Making good progress"],
-      "neutral": ["It's fine", "Getting it done"],
-      "stressed": ["This is getting repetitive", "Need more challenge"],
-      "burned_out": ["I'm considering other options", "Not feeling motivated"]
+      "happy": ["Finally, something that doesn't put me to sleep", "This actually makes technical sense"],
+      "neutral": ["Code doesn't lie, unlike project briefs", "Building the impossible, as usual"],
+      "stressed": ["Another 'quick fix' that'll break everything? Hard pass", "I'm not a miracle worker, despite popular belief"],
+      "burned_out": ["If one more person asks me to 'just move that button,' I'm switching careers", "My LinkedIn is looking very attractive right now"]
     }
   },
   {
-    "id": "alex_junior",
+    "id": "sasha_junior",
     "name": "Sasha",
     "role": "Manager",
     "skill": 2,
-    "bio": "Eager junior manager still learning the ropes. Makes mistakes but brings fresh ideas. Needs encouragement and guidance.",
+    "bio": "Ambitious manager who's tired of being underestimated because of their age. Makes bold calls that either save the day or create beautiful chaos. Usually both.",
     "characteristics": {
       "oftenGetsIll": false,
       "canWorkWeekends": false,
@@ -131,10 +131,10 @@
       }
     },
     "dialogue": {
-      "happy": ["This is so exciting!", "I'm learning so much"],
-      "neutral": ["Working on it", "Hope this is right"],
-      "stressed": ["I'm not sure about this", "Can someone help?"],
-      "burned_out": ["I feel lost", "I don't think I'm good enough"]
+      "happy": ["We're about to make something that'll make other agencies jealous", "This project is going to be legendary"],
+      "neutral": ["Managing the beautiful chaos, as always", "Keeping everyone from imploding"],
+      "stressed": ["This client thinks we're miracle workers. Spoiler: we're not", "I'm running out of diplomatic ways to say 'that's impossible'"],
+      "burned_out": ["If I have to explain why 'make it pop' isn't actionable feedback one more time...", "My sanity is not included in the project scope"]
     }
   },
   {

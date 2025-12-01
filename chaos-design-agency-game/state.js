@@ -15,6 +15,7 @@ const GameStateModule = (function() {
     conversationHistory: [],
     resolvedConversations: [],
     deferredConversations: {},
+    shownConversationsToday: [],
     portfolio: {
         completedProjects: 0,
         totalEarnings: 0
@@ -88,6 +89,7 @@ const GameStateModule = (function() {
     GameState.conversationHistory = [];
     GameState.resolvedConversations = [];
     GameState.deferredConversations = {};
+    GameState.shownConversationsToday = [];
     GameState.portfolio = { completedProjects: 0, totalEarnings: 0 };
     GameState.keyMoments = [];
     GameState.gameStats = {
@@ -190,11 +192,13 @@ const GameStateModule = (function() {
     const entries = [];
     const addGlobalEntry = delta => {
         if (!delta) return;
-        entries.push(`😊 Morale ${delta > 0 ? '+' : ''}${delta}`);
+        const emoji = delta > 0 ? '😊' : '😔';
+        entries.push(`${emoji} Morale ${delta > 0 ? '+' : ''}${delta}`);
     };
     const addMemberEntry = (memberId, delta) => {
         if (!delta) return;
-        entries.push(`${getTeamMemberName(memberId)} 😊 ${delta > 0 ? '+' : ''}${delta}`);
+        const emoji = delta > 0 ? '😊' : '😔';
+        entries.push(`${getTeamMemberName(memberId)} ${emoji} ${delta > 0 ? '+' : ''}${delta}`);
     };
     const processObject = obj => {
         if (!obj) return;
