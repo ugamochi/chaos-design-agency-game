@@ -1115,7 +1115,8 @@ Conversation History: ${window.GameState.conversationHistory.length}
                     const projectId = btn.getAttribute('data-project-id');
                     const phasesContainer = btn.nextElementSibling;
                     if (phasesContainer && phasesContainer.classList.contains('project-phases-collapsible')) {
-                        const isExpanded = phasesContainer.style.display !== 'none';
+                        const computedDisplay = window.getComputedStyle(phasesContainer).display;
+                        const isExpanded = computedDisplay !== 'none';
                         phasesContainer.style.display = isExpanded ? 'none' : 'block';
                         btn.classList.toggle('expanded', !isExpanded);
                     }

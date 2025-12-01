@@ -4,9 +4,10 @@ const GameModule = (function() {
     'use strict';
 
     async function initGame() {
-        window.setAllConversations(await Utils.loadJson('conversations.json'));
-        window.setAllTeamMembers(await Utils.loadJson('characters.json'));
-        window.setAllProjectTemplates(await Utils.loadJson('projects.json'));
+        const basePath = window.location.pathname.includes('/chaos-design-agency-game/') ? '' : './chaos-design-agency-game/';
+        window.setAllConversations(await Utils.loadJson(basePath + 'conversations.json'));
+        window.setAllTeamMembers(await Utils.loadJson(basePath + 'characters.json'));
+        window.setAllProjectTemplates(await Utils.loadJson(basePath + 'projects.json'));
 
         console.log('Loaded conversations:', window.AllConversations.length);
         console.log('Loaded team members:', window.AllTeamMembers.length);
