@@ -4,7 +4,7 @@ const TutorialModule = (function() {
     'use strict';
 
     let tutorialState = {
-    enabled: false, // Tutorial disabled by default
+    enabled: true, // Tutorial enabled by default
     completed: false,
     currentStep: 0,
     steps: [
@@ -18,14 +18,14 @@ const TutorialModule = (function() {
         {
             id: 'resources',
             title: 'Your Resources',
-            message: 'Keep an eye on Money (don\'t go bankrupt!), Team Morale (happy team = better work), and Client Satisfaction (determines payment).',
+            message: 'Keep an eye on Money (don\'t go bankrupt!), Team Morale (happy team = better work), and Client Reputation (determines payment).',
             target: '.resources',
             position: 'bottom'
         },
         {
             id: 'projects',
             title: 'Active Projects',
-            message: 'Each project has progress, deadlines, and satisfaction. Projects without teams won\'t make progress!',
+            message: 'Each project has progress, deadlines, and reputation. Projects without teams won\'t make progress!',
             target: '.project-timeline',
             position: 'top'
         },
@@ -55,7 +55,7 @@ const TutorialModule = (function() {
         {
             id: 'choices',
             title: 'Make Your Choice',
-            message: 'Each option shows what it will affect. Consider the impacts on money, morale, and client satisfaction.',
+            message: 'Each option shows what it will affect. Consider the impacts on money, morale, and client reputation.',
             target: '.conversation-choices',
             position: 'top'
         },
@@ -82,7 +82,7 @@ const TutorialModule = (function() {
     
     // Initialize tutorial for new games
     if (isNewGame) {
-        tutorialState.enabled = false; // Disabled by default
+        tutorialState.enabled = true; // Enabled by default
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
         saveTutorialState();
@@ -90,11 +90,11 @@ const TutorialModule = (function() {
         // For existing games, load saved state with sensible defaults
         const saved = JSON.parse(savedTutorialState);
         tutorialState.completed = saved.completed !== undefined ? saved.completed : false;
-        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : false; // Default to disabled
+        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : true; // Default to enabled
         tutorialState.currentStep = saved.currentStep || 0;
     } else {
-        // No saved state - default to disabled
-        tutorialState.enabled = false;
+        // No saved state - default to enabled
+        tutorialState.enabled = true;
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
         saveTutorialState();
@@ -167,39 +167,24 @@ const TutorialModule = (function() {
         skipButton.style.cursor = 'pointer';
         skipButton.style.pointerEvents = 'auto';
         skipButton.style.zIndex = '2002';
-        skipButton.style.position = 'relative'; // Ensure it's positioned
+        skipButton.style.position = 'relative';
         
-        // Remove any existing handlers
+        // Remove any existing handlers by cloning
         const newSkipButton = skipButton.cloneNode(true);
         skipButton.parentNode.replaceChild(newSkipButton, skipButton);
         
-        // Add click handler to the new button
+        // Add click handler
         newSkipButton.addEventListener('click', function(e) {
-            console.log('Skip button clicked!');
             e.stopPropagation();
             e.preventDefault();
             e.stopImmediatePropagation();
             
-            // Try multiple ways to call the function
-            if (typeof window.skipTutorial === 'function') {
-                window.skipTutorial();
-            } else if (typeof skipTutorial === 'function') {
-                skipTutorial();
-            } else if (typeof TutorialModule.skipTutorial === 'function') {
-                TutorialModule.skipTutorial();
-            } else {
-                console.error('skipTutorial function not found!');
-                // Fallback: manually skip
-                removeTutorialHighlight();
-                removeTutorialOverlay();
-                tutorialState.completed = true;
-                tutorialState.enabled = false;
-                saveTutorialState();
-            }
+            // Call skipTutorial directly
+            TutorialModule.skipTutorial();
             return false;
         }, true);
         
-        // Also add mousedown to catch it even earlier
+        // Prevent event bubbling on mousedown
         newSkipButton.addEventListener('mousedown', function(e) {
             e.stopPropagation();
         }, true);
@@ -391,7 +376,7 @@ const TutorialModule = (function() {
 
     function resumeTutorialAfterConversation() {
         const step = tutorialState.steps[tutorialState.currentStep];
-        if (step && step.waitForConversation && window.currentConversation === null) {
+        if (step && step.waitForConversation && window.currentConversation !== null) {
             setTimeout(() => {
                 showTutorialStep(tutorialState.currentStep + 1);
             }, 500);

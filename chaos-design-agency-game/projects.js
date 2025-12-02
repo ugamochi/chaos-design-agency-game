@@ -255,7 +255,7 @@ const ProjectsModule = (function() {
 
     risk.scopeLabel = hoursDelta > 0 ? `+${Math.round(hoursDelta)}h` : hoursDelta < 0 ? `${Math.round(hoursDelta)}h` : 'On estimate';
     risk.timelineLabel = project.weeksRemaining <= 0 ? 'Overdue' : `${Math.ceil(project.weeksRemaining)} wk left`;
-    risk.satisfactionLabel = `${Math.round(project.satisfaction)}% happy`;
+    risk.satisfactionLabel = `${Math.round(project.satisfaction)}% reputation`;
 
     project.risk = risk;
 }
@@ -671,7 +671,7 @@ const ProjectsModule = (function() {
         return project;
     }
 
-    function updatePhaseProgress(project, phaseName) {
+    function updatePhaseProgress(project, phaseName, isRealTimeMode = false) {
         if (!project.phases || !project.phases[phaseName]) return;
         
         const phase = project.phases[phaseName];
@@ -798,7 +798,8 @@ const ProjectsModule = (function() {
             
             // Deduct hours for this member (only once per day, not per phase)
             // We'll track this per member to avoid double-deducting
-            if (!member._hoursDeductedToday) {
+            // Skip hour deduction in real-time mode - timer handles it
+            if (!isRealTimeMode && !member._hoursDeductedToday) {
                 const hoursWorkedThisWeek = member.hoursWorkedThisWeek || 0;
                 let totalHoursToDeduct = 0;
                 
@@ -985,7 +986,7 @@ const ProjectsModule = (function() {
             if (project.phases) {
                 // Update each phase
                 ['management', 'design', 'development', 'review'].forEach(phaseName => {
-                    updatePhaseProgress(project, phaseName);
+                    updatePhaseProgress(project, phaseName, isRealTimeMode);
                 });
                 
                 // Calculate overall project progress from phases (weighted by hours required)
@@ -1022,7 +1023,10 @@ const ProjectsModule = (function() {
                     return;
                 }
                 
-                project.weeksRemaining = Math.max(0, project.weeksRemaining - (1 / 7));
+                if (!project._lastWeeksRemainingUpdateDay || project._lastWeeksRemainingUpdateDay !== window.GameState.currentDay) {
+                    project.weeksRemaining = Math.max(0, project.weeksRemaining - (1 / 7));
+                    project._lastWeeksRemainingUpdateDay = window.GameState.currentDay;
+                }
                 updateProjectSatisfaction(project);
                 return;
             }
@@ -1143,7 +1147,10 @@ const ProjectsModule = (function() {
                 completeProject(project.id);
             }
 
-            project.weeksRemaining = Math.max(0, project.weeksRemaining - (1 / 7));
+            if (!project._lastWeeksRemainingUpdateDay || project._lastWeeksRemainingUpdateDay !== window.GameState.currentDay) {
+                project.weeksRemaining = Math.max(0, project.weeksRemaining - (1 / 7));
+                project._lastWeeksRemainingUpdateDay = window.GameState.currentDay;
+            }
 
             updateProjectSatisfaction(project);
         }
@@ -1166,7 +1173,7 @@ const ProjectsModule = (function() {
             if (project.weeksRemaining < 0 && project.satisfaction < 20 && !project.failureLogged) {
                 project.failureLogged = true;
                 window.GameState.gameStats.projectsFailed++;
-                window.recordKeyMoment('Project Failed', `${project.name} collapsed due to low satisfaction and missed deadline`, 'failure');
+                window.recordKeyMoment('Project Failed', `${project.name} collapsed due to low reputation and missed deadline`, 'failure');
             }
         });
     }
@@ -1229,7 +1236,7 @@ const ProjectsModule = (function() {
         
         if (project.satisfaction >= 90 && project.weeksRemaining > 0) {
             window.GameState.gameStats.perfectDeliveries++;
-            window.recordKeyMoment('Perfect Delivery!', `${project.name} completed with ${project.satisfaction}% satisfaction`, 'success');
+            window.recordKeyMoment('Perfect Delivery!', `${project.name} completed with ${project.satisfaction}% reputation`, 'success');
         } else if (project.satisfaction >= 80) {
             window.recordKeyMoment('Great Work!', `${project.name} completed successfully`, 'success');
         }
@@ -1315,22 +1322,17 @@ const ProjectsModule = (function() {
         const member = window.GameState.team.find(m => m.id === memberId);
     if (!member) return false;
 
-    if (member.currentAssignment && member.currentAssignment !== projectId) {
-        if (member.id !== 'player') {
-            member.currentAssignment = null;
-            member.daysOnAssignment = 0;
-        }
-    }
-
     if (projectId) {
         const project = window.GameState.projects.find(p => p.id === projectId);
         
-        // For phase-based projects, assign to all phases that can be started
-        if (project && project.phases) {
+        if (!project) return false;
+        
+        // For phase-based projects, assign to ALL phases (not just ones that can start)
+        if (project.phases) {
             const phaseNames = ['management', 'design', 'development', 'review'];
             phaseNames.forEach(phaseName => {
                 const phase = project.phases[phaseName];
-                if (phase && canStartPhase(project, phaseName)) {
+                if (phase) {
                     if (!phase.teamAssigned) {
                         phase.teamAssigned = [];
                     }
@@ -1341,27 +1343,32 @@ const ProjectsModule = (function() {
             });
         }
         
-        member.currentAssignment = projectId;
+        // Allow multiple project assignments (workers can be on multiple projects)
+        // Track assignments in project.teamAssigned array
+        if (!project.teamAssigned || !Array.isArray(project.teamAssigned)) {
+            project.teamAssigned = [];
+        }
+        if (!project.teamAssigned.includes(memberId)) {
+            project.teamAssigned.push(memberId);
+        }
+        
+        // Set currentAssignment to the first/latest project (for backward compatibility)
+        // But allow workers to be on multiple projects via project.teamAssigned
+        if (!member.currentAssignment || member.id === 'player') {
+            member.currentAssignment = projectId;
+        }
         if (member.daysOnAssignment === undefined) {
             member.daysOnAssignment = 0;
         }
     } else {
-        member.currentAssignment = null;
-        member.daysOnAssignment = 0;
+        // projectId is null/undefined - clear current assignment
+        // Note: This doesn't remove from project.teamAssigned arrays to allow multiple assignments
+        // To remove from a specific project, use removeTeamMemberFromProject
+        if (member.currentAssignment) {
+            member.currentAssignment = null;
+            member.daysOnAssignment = 0;
+        }
     }
-
-        window.GameState.projects.forEach(project => {
-            if (!project.teamAssigned || !Array.isArray(project.teamAssigned)) {
-                project.teamAssigned = [];
-            }
-            if (project.id === projectId) {
-                if (!project.teamAssigned.includes(memberId)) {
-                    project.teamAssigned.push(memberId);
-                }
-            } else {
-                project.teamAssigned = project.teamAssigned.filter(id => id !== memberId);
-            }
-        });
 
         window.displayGameState();
         window.highlightTeamMemberCard(memberId);
@@ -1509,6 +1516,52 @@ const ProjectsModule = (function() {
             phase.teamAssigned = phase.teamAssigned.filter(id => id !== memberId);
         }
         
+        // If worker is removed from a phase, also remove from project
+        // This maintains sync: project assignment = all phases assignment
+        if (project.teamAssigned && project.teamAssigned.includes(memberId)) {
+            removeTeamMemberFromProject(memberId, projectId);
+        }
+        
+        return true;
+    }
+
+    function removeTeamMemberFromProject(memberId, projectId) {
+        const project = window.GameState.projects.find(p => p.id === projectId);
+        if (!project) return false;
+        
+        // Remove from project.teamAssigned
+        if (project.teamAssigned && Array.isArray(project.teamAssigned)) {
+            project.teamAssigned = project.teamAssigned.filter(id => id !== memberId);
+        }
+        
+        // Remove from all phases of this project
+        if (project.phases) {
+            const phaseNames = ['management', 'design', 'development', 'review'];
+            phaseNames.forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned) {
+                    phase.teamAssigned = phase.teamAssigned.filter(id => id !== memberId);
+                }
+            });
+        }
+        
+        // Clear currentAssignment if it was this project
+        const member = window.GameState.team.find(m => m.id === memberId);
+        if (member && member.currentAssignment === projectId) {
+            // Set to another project if worker is on multiple projects
+            const otherProjects = window.GameState.projects.filter(p => 
+                p.id !== projectId && 
+                p.teamAssigned && 
+                p.teamAssigned.includes(memberId)
+            );
+            if (otherProjects.length > 0) {
+                member.currentAssignment = otherProjects[0].id;
+            } else {
+                member.currentAssignment = null;
+                member.daysOnAssignment = 0;
+            }
+        }
+        
         return true;
     }
 
@@ -1631,6 +1684,7 @@ const ProjectsModule = (function() {
         assignTeamMemberToPhase,
         assignTeamMemberToAllPhases,
         removeTeamMemberFromPhase,
+        removeTeamMemberFromProject,
         hireFreelancer,
         triggerPhaseCompletion,
         triggerPhaseActivation
@@ -1668,6 +1722,7 @@ window.getPhaseStatus = ProjectsModule.getPhaseStatus;
 window.updatePhaseProgress = ProjectsModule.updatePhaseProgress;
 window.assignTeamMemberToPhase = ProjectsModule.assignTeamMemberToPhase;
 window.removeTeamMemberFromPhase = ProjectsModule.removeTeamMemberFromPhase;
+window.removeTeamMemberFromProject = ProjectsModule.removeTeamMemberFromProject;
 window.hireFreelancer = ProjectsModule.hireFreelancer;
 window.triggerPhaseCompletion = ProjectsModule.triggerPhaseCompletion;
 window.triggerPhaseActivation = ProjectsModule.triggerPhaseActivation;

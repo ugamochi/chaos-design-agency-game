@@ -35,12 +35,20 @@
                             <span id="teamMorale" class="resource-value">75</span>
                         </div>
                         <div class="resource-item resource-item-extra">
-                            <span class="resource-label">⭐ Satisfaction:</span>
+                            <span class="resource-label">⭐ Reputation:</span>
                             <span id="satisfaction" class="resource-value">--</span>
                         </div>
                         <div class="resource-item resource-item-extra">
-                            <span class="resource-label">⏰ Hours:</span>
+                            <span class="resource-label">⏰ Hours (this week):</span>
                             <span id="playerHours" class="resource-value">8/8</span>
+                        </div>
+                        <div class="resource-item resource-item-extra">
+                            <span class="resource-label">🎯 Score:</span>
+                            <span id="currentScore" class="resource-value">0</span>
+                        </div>
+                        <div class="resource-item resource-item-extra">
+                            <span class="resource-label">🏆 Best:</span>
+                            <span id="bestScore" class="resource-value">--</span>
                         </div>
                     </div>
                     <button id="settingsBtn" class="btn-icon" title="Settings">⚙️</button>
@@ -63,35 +71,38 @@
             </div>
         </header>
 
-        <!-- Main Content Area (Messages) -->
-        <main class="main-content">
-            <div class="main-content-header">
-                <h2>Messages</h2>
-                <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
-            </div>
-            <div id="contentArea" class="content-area">
-                <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
-            </div>
-            <div id="activityFeed" class="activity-feed">
-                <!-- Activity feed will be dynamically inserted here -->
-            </div>
-        </main>
+        <!-- Main Content Area (Messages and Team Side by Side) -->
+        <div class="main-layout-container">
+            <!-- Main Content Area (Messages and Projects) -->
+            <main class="main-content">
+                <div class="main-content-header">
+                    <h2>Messages</h2>
+                    <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
+                </div>
+                <div id="contentArea" class="content-area">
+                    <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
+                </div>
+                <div id="activityFeed" class="activity-feed">
+                    <!-- Activity feed will be dynamically inserted here -->
+                </div>
 
-        <!-- Project Timeline Section -->
-        <section class="project-timeline">
-            <h2>Active Projects</h2>
-            <div id="projectsContainer" class="projects-container">
-                <!-- Projects will be dynamically inserted here -->
-            </div>
-        </section>
+                <!-- Project Timeline Section -->
+                <section class="project-timeline">
+                    <h2>Active Projects</h2>
+                    <div id="projectsContainer" class="projects-container">
+                        <!-- Projects will be dynamically inserted here -->
+                    </div>
+                </section>
+            </main>
 
-        <!-- Team Section -->
-        <section class="team-section">
-            <h2>Team</h2>
-            <div id="teamContainer" class="team-container">
-                <!-- Team members will be dynamically inserted here -->
-            </div>
-        </section>
+            <!-- Team Section -->
+            <section class="team-section">
+                <h2>Team</h2>
+                <div id="teamContainer" class="team-container">
+                    <!-- Team members will be dynamically inserted here -->
+                </div>
+            </section>
+        </div>
 
         <!-- Office Visualization Section -->
         <section class="office-visualization-section">
@@ -151,23 +162,23 @@
             <h2>📖 How to Play</h2>
             <div class="help-section">
                 <h3>🎯 Objective</h3>
-                <p>Survive 12 weeks running your design agency. Balance client satisfaction, team morale, and finances to achieve victory!</p>
+                <p>Survive 12 weeks running your design agency. Balance client reputation, team morale, and finances to achieve victory!</p>
             </div>
             <div class="help-section">
                 <h3>💰 Resources</h3>
                 <ul>
                     <li><strong>Money:</strong> Don't go below -$5,000 or you're bankrupt!</li>
                     <li><strong>Team Morale:</strong> Keep above 10% or team members will quit</li>
-                    <li><strong>Client Satisfaction:</strong> Higher satisfaction = bigger payments</li>
+                    <li><strong>Client Reputation:</strong> Higher reputation = bigger payments</li>
                 </ul>
             </div>
             <div class="help-section">
                 <h3>📊 Projects</h3>
                 <ul>
                     <li>Assign team members to make progress</li>
-                    <li>Watch deadlines - missing them hurts satisfaction</li>
+                    <li>Watch deadlines - missing them hurts reputation</li>
                     <li>Manage scope creep carefully</li>
-                    <li>Complete with 90%+ satisfaction for perfect deliveries</li>
+                    <li>Complete with 90%+ reputation for perfect deliveries</li>
                 </ul>
             </div>
             <div class="help-section">
@@ -184,15 +195,15 @@
                 <ul>
                     <li>Client requests, team concerns, business decisions</li>
                     <li>Every choice has consequences</li>
-                    <li>Response time affects client satisfaction</li>
+                    <li>Response time affects client reputation</li>
                     <li>Can defer to handle later (same day only)</li>
                 </ul>
             </div>
             <div class="help-section">
                 <h3>🏆 Victory Paths</h3>
                 <ul>
-                    <li><strong>🌟 Rockstar:</strong> 5+ projects, $25k+, 75% avg satisfaction, 70% morale</li>
-                    <li><strong>📈 Professional:</strong> 3+ projects, $10k+, 60% satisfaction, 50% morale</li>
+                    <li><strong>🌟 Rockstar:</strong> 5+ projects, $25k+, 75% avg reputation, 70% morale</li>
+                    <li><strong>📈 Professional:</strong> 3+ projects, $10k+, 60% reputation, 50% morale</li>
                     <li><strong>💪 Survivor:</strong> 2+ projects, $2k+</li>
                 </ul>
             </div>

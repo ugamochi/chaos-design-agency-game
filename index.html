@@ -39,7 +39,7 @@
                             <span id="satisfaction" class="resource-value">--</span>
                         </div>
                         <div class="resource-item resource-item-extra">
-                            <span class="resource-label">⏰ Hours:</span>
+                            <span class="resource-label">⏰ Hours (this week):</span>
                             <span id="playerHours" class="resource-value">8/8</span>
                         </div>
                     </div>
@@ -63,35 +63,38 @@
             </div>
         </header>
 
-        <!-- Main Content Area (Messages) -->
-        <main class="main-content">
-            <div class="main-content-header">
-                <h2>Messages</h2>
-                <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
-            </div>
-            <div id="contentArea" class="content-area">
-                <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
-            </div>
-            <div id="activityFeed" class="activity-feed">
-                <!-- Activity feed will be dynamically inserted here -->
-            </div>
-        </main>
+        <!-- Main Content Area (Messages and Team Side by Side) -->
+        <div class="main-layout-container">
+            <!-- Main Content Area (Messages and Projects) -->
+            <main class="main-content">
+                <div class="main-content-header">
+                    <h2>Messages</h2>
+                    <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
+                </div>
+                <div id="contentArea" class="content-area">
+                    <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
+                </div>
+                <div id="activityFeed" class="activity-feed">
+                    <!-- Activity feed will be dynamically inserted here -->
+                </div>
 
-        <!-- Project Timeline Section -->
-        <section class="project-timeline">
-            <h2>Active Projects</h2>
-            <div id="projectsContainer" class="projects-container">
-                <!-- Projects will be dynamically inserted here -->
-            </div>
-        </section>
+                <!-- Project Timeline Section -->
+                <section class="project-timeline">
+                    <h2>Active Projects</h2>
+                    <div id="projectsContainer" class="projects-container">
+                        <!-- Projects will be dynamically inserted here -->
+                    </div>
+                </section>
+            </main>
 
-        <!-- Team Section -->
-        <section class="team-section">
-            <h2>Team</h2>
-            <div id="teamContainer" class="team-container">
-                <!-- Team members will be dynamically inserted here -->
-            </div>
-        </section>
+            <!-- Team Section -->
+            <section class="team-section">
+                <h2>Team</h2>
+                <div id="teamContainer" class="team-container">
+                    <!-- Team members will be dynamically inserted here -->
+                </div>
+            </section>
+        </div>
 
         <!-- Office Visualization Section -->
         <section class="office-visualization-section">

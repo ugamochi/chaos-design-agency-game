@@ -1,56 +1,61 @@
 [
   {
     "id": "techcorp_web",
-    "name": "Neon Meridian Portal Refresh",
-    "client": "Neon Meridian Labs",
+    "name": "Anti-Corporate Corporate Rebellion",
+    "client": "Vibe Cartel",
     "type": "website",
     "budget": 9000,
     "totalWeeks": 7,
     "complexity": 4,
-    "description": "Psychedelic corporate portal bridging three timelines with reactive glyphs.",
+    "description": "Making a tech company look like it actually has a soul. Think corporate meets counterculture - if that's even possible.",
     "requiredSkills": ["design", "development"],
     "baseClientSatisfaction": 0.78,
     "clientProfile": {
-      "name": "Dr. Lyra Quell",
-      "title": "Chief Chronologist",
-      "company": "Neon Meridian Labs",
-      "personality": "demanding_but_fair",
+      "name": "Blake Nomura",
+      "title": "Chief Disruption Officer",
+      "company": "Vibe Cartel",
+      "personality": "provocatively_demanding",
       "traits": {
         "decisionSpeed": "slow",
         "budgetReality": "generous",
         "scopeDiscipline": "weak",
-        "communicationStyle": "direct",
-        "respectForProcess": "high"
+        "communicationStyle": "challeng_direct",
+        "respectForProcess": "medium"
       },
       "satisfactionFactors": {
         "designQuality": 0.4,
         "meetingDeadlines": 0.3,
         "responsiveness": 0.2,
         "stayingInBudget": 0.1
-      }
+      },
+      "signature_phrases": [
+        "Everyone else plays it safe. That's exactly why they're boring.",
+        "I don't want pretty - I want unforgettable.",
+        "Our competitors will either copy this or cry about it."
+      ]
     }
   },
   {
     "id": "startupx_branding",
-    "name": "Mythic Mango Identity Brew",
-    "client": "Mythic Mango Collective",
+    "name": "Luxury Rebellion Brand Kit",
+    "client": "Midnight Brands Co.",
     "type": "branding",
     "budget": 7000,
     "totalWeeks": 9,
     "complexity": 3,
-    "description": "Immersive multi-sensory brand kit packaged as ritual recipe cards.",
+    "description": "For clients who have money but refuse to act like it. Think luxury meets rebellion - because why choose?",
     "requiredSkills": ["design"],
     "baseClientSatisfaction": 0.74,
     "clientProfile": {
-      "name": "Aurora Lam",
-      "title": "Dream Distiller",
-      "company": "Mythic Mango Collective",
-      "personality": "visionary",
+      "name": "Sasha Wilde",
+      "title": "Brand Anarchist",
+      "company": "Midnight Brands Co.",
+      "personality": "visionary_rebel",
       "traits": {
         "decisionSpeed": "fast",
         "budgetReality": "champagne_dreams",
         "scopeDiscipline": "weak",
-        "communicationStyle": "inspirational",
+        "communicationStyle": "provocative_inspiring",
         "respectForProcess": "low"
       },
       "satisfactionFactors": {
@@ -58,30 +63,35 @@
         "meetingDeadlines": 0.15,
         "responsiveness": 0.25,
         "stayingInBudget": 0.15
-      }
+      },
+      "signature_phrases": [
+        "Everyone's doing minimalism. We want maximalism that makes people uncomfortable.",
+        "If it doesn't spark controversy, it's not working hard enough.",
+        "Our last designer quit because we rejected their 'safe' approach."
+      ]
     }
   },
   {
     "id": "enterprise_app",
-    "name": "Orbital Council Command Deck",
-    "client": "Orbital Council Consortium",
+    "name": "Corporate Resistance Platform",
+    "client": "Stealth Capital Ventures",
     "type": "application",
     "budget": 15000,
     "totalWeeks": 11,
     "complexity": 5,
-    "description": "Interplanetary committee control deck with ceremonial data rituals.",
+    "description": "Enterprise software that doesn't make employees want to quit. Revolutionary concept, apparently.",
     "requiredSkills": ["design", "development"],
     "baseClientSatisfaction": 0.82,
     "clientProfile": {
-      "name": "Commodore Elan Voss",
-      "title": "Harmonizer of Ministries",
-      "company": "Orbital Council Consortium",
-      "personality": "committee_runner",
+      "name": "Phoenix Chen",
+      "title": "VP of Not Being Boring",
+      "company": "Stealth Capital Ventures",
+      "personality": "corporate_rebel",
       "traits": {
         "decisionSpeed": "slow",
         "budgetReality": "generous",
         "scopeDiscipline": "medium",
-        "communicationStyle": "formal",
+        "communicationStyle": "corporate_with_edge",
         "respectForProcess": "high"
       },
       "satisfactionFactors": {
@@ -89,30 +99,35 @@
         "meetingDeadlines": 0.45,
         "responsiveness": 0.15,
         "stayingInBudget": 0.2
-      }
+      },
+      "signature_phrases": [
+        "We have corporate budgets but startup energy. Make it make sense.",
+        "The board wants 'innovative' but gets nervous around actual innovation.",
+        "Let's build something our competitors wish they had the courage to try."
+      ]
     }
   },
   {
     "id": "greenleaf_rebrand",
-    "name": "GreenLeaf Eco-Rebrand",
-    "client": "GreenLeaf Co.",
+    "name": "Anti-Boring Sustainable Rebrand",
+    "client": "Rebel Supply Co.",
     "type": "rebrand",
     "budget": 12000,
     "totalWeeks": 10,
     "complexity": 4,
-    "description": "Complete rebrand and website for sustainable products company.",
+    "description": "Eco-friendly doesn't have to mean boring. Time to make sustainability look as good as it feels.",
     "requiredSkills": ["design", "development"],
     "baseClientSatisfaction": 0.75,
     "clientProfile": {
-      "name": "Marcus Chen",
-      "title": "Founder",
-      "company": "GreenLeaf Co.",
-      "personality": "balanced",
+      "name": "Jordan Rivers",
+      "title": "Chief Trouble Maker",
+      "company": "Rebel Supply Co.",
+      "personality": "ethical_provocateur",
       "traits": {
         "decisionSpeed": "medium",
         "budgetReality": "reasonable",
         "scopeDiscipline": "medium",
-        "communicationStyle": "friendly",
+        "communicationStyle": "friendly_challenging",
         "respectForProcess": "medium"
       },
       "satisfactionFactors": {
@@ -120,30 +135,35 @@
         "meetingDeadlines": 0.3,
         "responsiveness": 0.2,
         "stayingInBudget": 0.15
-      }
+      },
+      "signature_phrases": [
+        "Sustainability shouldn't look like it was designed by accountants.",
+        "We want people to choose us because we're better, not just because we're good.",
+        "If it doesn't make fast fashion nervous, we're not trying hard enough."
+      ]
     }
   },
   {
     "id": "small_business_site",
-    "name": "Candlelight Nook Storysite",
-    "client": "Candlelight Nook & Co.",
+    "name": "Small Budget, Big Attitude Website",
+    "client": "Misfit Coffee Collective",
     "type": "website",
     "budget": 3500,
     "totalWeeks": 5,
     "complexity": 1,
-    "description": "Whimsical storybook microsite with hand-inked divination contact form.",
+    "description": "Proving that small budgets don't have to mean small personality. Maximum impact, minimum corporate nonsense.",
     "requiredSkills": ["design", "development"],
     "baseClientSatisfaction": 0.68,
     "clientProfile": {
-      "name": "Etta Bloom",
-      "title": "Keeper of Cozy Things",
-      "company": "Candlelight Nook & Co.",
-      "personality": "budget_watch",
+      "name": "Riley Cross",
+      "title": "Head of Organized Chaos",
+      "company": "Misfit Coffee Collective",
+      "personality": "scrappy_confident",
       "traits": {
         "decisionSpeed": "medium",
         "budgetReality": "strict",
         "scopeDiscipline": "strong",
-        "communicationStyle": "friendly",
+        "communicationStyle": "direct_witty",
         "respectForProcess": "medium"
       },
       "satisfactionFactors": {
@@ -151,7 +171,336 @@
         "meetingDeadlines": 0.2,
         "responsiveness": 0.2,
         "stayingInBudget": 0.3
-      }
+      },
+      "signature_phrases": [
+        "We don't have corporate money, but we have more personality than they'll ever buy.",
+        "Small business doesn't mean small dreams - just smaller budgets.",
+        "We want to look expensive without being pretentious. Good luck with that."
+      ]
+    }
+  },
+  {
+    "id": "luxury_controversy_campaign",
+    "name": "Luxury Brand Controversy Campaign",
+    "client": "Velvet Rebellion Co.",
+    "type": "campaign",
+    "budget": 18000,
+    "totalWeeks": 8,
+    "complexity": 4,
+    "description": "Making expensive things look effortlessly cool while secretly making everyone else feel inadequate. Luxury meets rebellion in the most beautiful way possible.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.76,
+    "clientProfile": {
+      "name": "Zara Blackwell",
+      "title": "Chief Chaos Officer",
+      "company": "Velvet Rebellion Co.",
+      "personality": "luxury_rebel",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "generous",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "provocative_elegant",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.5,
+        "meetingDeadlines": 0.2,
+        "responsiveness": 0.15,
+        "stayingInBudget": 0.15
+      },
+      "signature_phrases": [
+        "If it doesn't make people slightly uncomfortable, it's not working hard enough.",
+        "We want luxury that doesn't apologize for being expensive.",
+        "Our customers buy attitude, not just products."
+      ]
+    }
+  },
+  {
+    "id": "anti_social_media_platform",
+    "name": "Anti-Social Media Platform",
+    "client": "Digital Detox Collective",
+    "type": "application",
+    "budget": 22000,
+    "totalWeeks": 12,
+    "complexity": 5,
+    "description": "Building a social platform that encourages people to actually live their lives instead of documenting them. Ironic? Absolutely. Revolutionary? Probably.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.79,
+    "clientProfile": {
+      "name": "River Chen",
+      "title": "Digital Philosophy Director",
+      "company": "Digital Detox Collective",
+      "personality": "tech_philosopher",
+      "traits": {
+        "decisionSpeed": "slow",
+        "budgetReality": "reasonable",
+        "scopeDiscipline": "strong",
+        "communicationStyle": "thoughtfully_provocative",
+        "respectForProcess": "high"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.3,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.1
+      },
+      "signature_phrases": [
+        "We're using technology to fight technology addiction. Meta, right?",
+        "If our app makes people use their phones less, we've succeeded.",
+        "Real connection happens when you put the screen down."
+      ]
+    }
+  },
+  {
+    "id": "ethical_controversy_brand",
+    "name": "Ethical Controversy Brand Identity",
+    "client": "Conscious Rebellion Ltd.",
+    "type": "branding",
+    "budget": 16000,
+    "totalWeeks": 10,
+    "complexity": 4,
+    "description": "For companies that do good but refuse to be boring about it. Making ethical choices look as sexy as questionable ones used to be.",
+    "requiredSkills": ["design"],
+    "baseClientSatisfaction": 0.81,
+    "clientProfile": {
+      "name": "Kai Morrison",
+      "title": "Ethical Trouble Maker",
+      "company": "Conscious Rebellion Ltd.",
+      "personality": "principled_provocateur",
+      "traits": {
+        "decisionSpeed": "medium",
+        "budgetReality": "generous",
+        "scopeDiscipline": "medium",
+        "communicationStyle": "passionate_direct",
+        "respectForProcess": "medium"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.25,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.15
+      },
+      "signature_phrases": [
+        "Ethics don't have to be beige and boring.",
+        "We want to prove that doing good can look incredible.",
+        "Sustainability should make people want it, not guilt them into it."
+      ]
+    }
+  },
+  {
+    "id": "minimalist_maximalism_website",
+    "name": "Minimalist Maximalism Website",
+    "client": "Paradox Studio",
+    "type": "website",
+    "budget": 8500,
+    "totalWeeks": 6,
+    "complexity": 3,
+    "description": "Less is more, but more is also more. Creating websites that are simultaneously simple and complex, minimal and maximal. It shouldn't make sense, but somehow it does.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.73,
+    "clientProfile": {
+      "name": "Nova Sterling",
+      "title": "Director of Beautiful Contradictions",
+      "company": "Paradox Studio",
+      "personality": "artistic_contradictory",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "champagne_dreams",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "poetic_confusing",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.45,
+        "meetingDeadlines": 0.15,
+        "responsiveness": 0.25,
+        "stayingInBudget": 0.15
+      },
+      "signature_phrases": [
+        "I want it to be empty but full, you know?",
+        "Think minimalism, but make it extra.",
+        "If it makes perfect sense, we're doing it wrong."
+      ]
+    }
+  },
+  {
+    "id": "luxury_fashion_rebellion",
+    "name": "Underground Luxury Fashion Brand",
+    "client": "NOIR Collective",
+    "type": "branding",
+    "budget": 28000,
+    "totalWeeks": 14,
+    "complexity": 5,
+    "description": "High-fashion meets streetwear rebellion. Creating luxury that doesn't apologize for being expensive but also doesn't take itself too seriously.",
+    "requiredSkills": ["design"],
+    "baseClientSatisfaction": 0.77,
+    "clientProfile": {
+      "name": "Iris Blackwood",
+      "title": "Creative Anarchist",
+      "company": "NOIR Collective",
+      "personality": "fashion_rebel",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "generous",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "dramatically_direct",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.5,
+        "meetingDeadlines": 0.15,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.15
+      },
+      "signature_phrases": [
+        "Fashion should make people feel something - even if it's uncomfortable.",
+        "We're not selling clothes, we're selling attitude with fabric attached.",
+        "If Vogue won't feature it because it's 'too much,' we're doing it right."
+      ]
+    }
+  },
+  {
+    "id": "boutique_hotel_experience",
+    "name": "Provocative Hospitality Experience",
+    "client": "The Velvet Underground Hotel",
+    "type": "website",
+    "budget": 24000,
+    "totalWeeks": 12,
+    "complexity": 4,
+    "description": "Boutique hotel that treats luxury like an art form and controversy like a marketing strategy. Making hospitality feel rebellious.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.79,
+    "clientProfile": {
+      "name": "Marcus Sinclair",
+      "title": "Experience Curator",
+      "company": "The Velvet Underground Hotel",
+      "personality": "luxury_maverick",
+      "traits": {
+        "decisionSpeed": "medium",
+        "budgetReality": "generous",
+        "scopeDiscipline": "medium",
+        "communicationStyle": "sophisticatedly_edgy",
+        "respectForProcess": "medium"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.25,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.15
+      },
+      "signature_phrases": [
+        "Our guests don't want comfort - they want an experience that changes them.",
+        "Hospitality is performance art, and we're the avant-garde.",
+        "If someone's grandmother would feel welcome here, we've failed."
+      ]
+    }
+  },
+  {
+    "id": "artisan_spirits_brand",
+    "name": "Rebellious Craft Spirits Identity",
+    "client": "Blackwater Distillery",
+    "type": "branding",
+    "budget": 19000,
+    "totalWeeks": 10,
+    "complexity": 4,
+    "description": "Craft distillery that makes spirits for people who think wine culture is pretentious but still want something sophisticated and dangerous.",
+    "requiredSkills": ["design"],
+    "baseClientSatisfaction": 0.75,
+    "clientProfile": {
+      "name": "Raven Torres",
+      "title": "Master of Spirits & Mischief",
+      "company": "Blackwater Distillery",
+      "personality": "artisan_rebel",
+      "traits": {
+        "decisionSpeed": "medium",
+        "budgetReality": "reasonable",
+        "scopeDiscipline": "strong",
+        "communicationStyle": "authentically_rough",
+        "respectForProcess": "medium"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.3,
+        "responsiveness": 0.2,
+        "stayingInBudget": 0.1
+      },
+      "signature_phrases": [
+        "We make alcohol for people who have opinions and aren't afraid to share them.",
+        "Smooth is overrated - we want character that bites back.",
+        "Our bottles should look dangerous sitting on a shelf."
+      ]
+    }
+  },
+  {
+    "id": "crypto_art_platform",
+    "name": "Controversial Digital Art Platform",
+    "client": "Rebellion Digital",
+    "type": "application",
+    "budget": 35000,
+    "totalWeeks": 16,
+    "complexity": 5,
+    "description": "NFT platform for artists who actually have something to say. Making digital art that matters instead of just making digital art that sells.",
+    "requiredSkills": ["design", "development"],
+    "baseClientSatisfaction": 0.72,
+    "clientProfile": {
+      "name": "Zoe Nakamura",
+      "title": "Digital Revolution Officer",
+      "company": "Rebellion Digital",
+      "personality": "tech_artist_rebel",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "champagne_dreams",
+        "scopeDiscipline": "weak",
+        "communicationStyle": "intellectually_provocative",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.45,
+        "meetingDeadlines": 0.2,
+        "responsiveness": 0.25,
+        "stayingInBudget": 0.1
+      },
+      "signature_phrases": [
+        "We're not just selling art - we're selling the future of creative rebellion.",
+        "If traditionalists love our platform, we're doing something wrong.",
+        "Technology should amplify artistic voices, not silence them for profit."
+      ]
+    }
+  },
+  {
+    "id": "underground_restaurant_concept",
+    "name": "Anti-Establishment Culinary Experience",
+    "client": "The Black Kitchen",
+    "type": "branding",
+    "budget": 21000,
+    "totalWeeks": 11,
+    "complexity": 4,
+    "description": "Restaurant that serves Michelin-quality food with punk rock attitude. Fine dining for people who hate fine dining culture.",
+    "requiredSkills": ["design"],
+    "baseClientSatisfaction": 0.78,
+    "clientProfile": {
+      "name": "Chef Dakota Wild",
+      "title": "Culinary Anarchist",
+      "company": "The Black Kitchen",
+      "personality": "culinary_rebel",
+      "traits": {
+        "decisionSpeed": "fast",
+        "budgetReality": "reasonable",
+        "scopeDiscipline": "medium",
+        "communicationStyle": "passionately_direct",
+        "respectForProcess": "low"
+      },
+      "satisfactionFactors": {
+        "designQuality": 0.4,
+        "meetingDeadlines": 0.25,
+        "responsiveness": 0.25,
+        "stayingInBudget": 0.1
+      },
+      "signature_phrases": [
+        "We serve food that challenges everything you think you know about fine dining.",
+        "Our reservation system is intentionally difficult - we want people who actually want to be here.",
+        "If food critics understand us immediately, we're not pushing hard enough."
+      ]
     }
   }
 ]

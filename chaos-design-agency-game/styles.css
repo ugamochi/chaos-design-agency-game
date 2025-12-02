@@ -3,25 +3,25 @@
    Based on tweakcn.com Supabase theme
    ============================================ */
 :root {
-    /* Supabase Dark Theme Colors */
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 11.2%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 47.4% 11.2%;
-    --popover-foreground: 210 40% 98%;
+    /* Supabase Dark Theme Colors - Warm Palette */
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
     --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 84.2% 60.2%; /* Brighter red for better visibility on dark background */
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 18%;
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
     
@@ -473,7 +473,7 @@ h3 {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) + 2px);
-    padding: 1.5rem;
+    padding: 1rem;
     position: relative;
     transition: all 0.2s ease;
     /* Enhanced shadow for dark mode */
@@ -593,10 +593,9 @@ h3 {
    PROJECT TIMELINE
    ============================================ */
 .project-timeline {
-    padding: 1rem 1.5rem;
-    background-color: hsl(var(--muted) / 0.3);
+    margin-top: 2rem;
+    padding-top: 2rem;
     border-top: 1px solid hsl(var(--border));
-    border-bottom: 1px solid hsl(var(--border));
     min-height: 150px;
 }
 
@@ -1267,9 +1266,31 @@ h3 {
    TEAM SECTION
    ============================================ */
 .team-section {
-    padding: 1rem 1.5rem;
+    flex: 1;
+    width: 33.333%;
+    overflow-y: auto;
+    padding: 1.5rem;
     background-color: hsl(var(--muted) / 0.3);
-    border-bottom: 1px solid hsl(var(--border));
+    border-left: 1px solid hsl(var(--border));
+}
+
+/* Responsive layout for main content and team section */
+@media (max-width: 1024px) {
+    .main-layout-container {
+        flex-direction: column;
+    }
+
+    .main-content {
+        width: 100%;
+        flex: none;
+    }
+
+    .team-section {
+        width: 100%;
+        flex: none;
+        border-left: none;
+        border-top: 1px solid hsl(var(--border));
+    }
 }
 
 .team-section h2 {
@@ -1280,27 +1301,9 @@ h3 {
 }
 
 .team-container {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-}
-
-@media (max-width: 1200px) {
-    .team-container {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 900px) {
-    .team-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 600px) {
-    .team-container {
-        grid-template-columns: 1fr;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .team-member-card.burned_out {
@@ -1368,6 +1371,65 @@ h3 {
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.5rem;
+}
+
+.team-member-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    margin: -0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    transition: background-color 0.2s ease;
+}
+
+.team-member-card-header:hover {
+    background-color: hsl(var(--muted) / 0.3);
+}
+
+.team-member-card.expanded .team-member-expand-icon {
+    transform: rotate(180deg);
+}
+
+.team-member-expand-icon {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    transition: transform 0.2s ease;
+}
+
+.team-member-header-horizontal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.team-member-name-role {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.team-member-info-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
+.team-member-project,
+.team-member-hours-left {
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.team-member-card-content {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid hsl(var(--border));
 }
 
 .team-member-avatar {
@@ -1760,17 +1822,26 @@ h3 {
 }
 
 /* ============================================
+   MAIN LAYOUT CONTAINER
+   ============================================ */
+.main-layout-container {
+    display: flex;
+    flex-direction: row;
+    min-height: calc(100vh - 200px);
+}
+
+/* ============================================
    MAIN CONTENT
    ============================================ */
 .main-content {
-    flex: 1;
+    flex: 2;
     overflow-y: auto;
     padding: 1.5rem;
     background-color: hsl(var(--background));
+    width: 66.666%;
 }
 
 .content-area {
-    min-height: 100%;
 }
 
 .welcome-message {
@@ -1937,6 +2008,10 @@ h3 {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid hsl(var(--border));
+    display: flex;
+    flex-direction: row;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .conversation-choices h3 {
@@ -1948,9 +2023,9 @@ h3 {
 
 .choice-btn {
     display: block;
-    width: 100%;
+    flex: 1;
+    min-width: calc(50% - 0.375rem);
     padding: 1rem;
-    margin-bottom: 0.75rem;
     background-color: hsl(var(--muted));
     border: 2px solid hsl(var(--border));
     border-radius: calc(var(--radius) - 2px);
@@ -1975,6 +2050,28 @@ h3 {
     border-color: hsl(var(--primary));
     background-color: hsl(var(--primary) / 0.1);
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+}
+
+.choice-btn:disabled {
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+.choice-btn.sent-choice {
+    border-color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.15);
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+    position: relative;
+}
+
+.choice-btn.sent-choice::after {
+    content: '✓';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 1.2rem;
+    color: hsl(var(--primary));
+    font-weight: bold;
 }
 
 .choice-btn .choice-index {
@@ -2016,6 +2113,31 @@ h3 {
     opacity: 0.6;
     cursor: not-allowed;
     background-color: hsl(var(--primary) / 0.5);
+}
+
+.send-response-btn.response-sent-btn {
+    background-color: hsl(var(--primary) / 0.8);
+    color: hsl(var(--primary-foreground));
+    cursor: default;
+    opacity: 1;
+}
+
+.conversation-container.response-sent {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.response-sent-indicator {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--muted) / 0.3) 100%);
+    border: 2px solid hsl(var(--primary) / 0.3);
+    border-radius: calc(var(--radius));
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 600;
+    color: hsl(var(--primary));
+    font-size: 0.95rem;
+    animation: slide-in 0.3s ease;
 }
 
 .conversation-actions {
@@ -2995,6 +3117,25 @@ h3 {
    RESPONSIVE DESIGN
    ============================================ */
 @media (max-width: 768px) {
+    .main-layout-container {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    .main-content {
+        width: 100%;
+        flex: none;
+        padding: 1rem;
+    }
+
+    .team-section {
+        width: 100%;
+        flex: none;
+        padding: 1rem;
+        border-left: none;
+        border-top: 1px solid hsl(var(--border));
+    }
+
     .header-top-row {
         flex-direction: column;
         align-items: flex-start;
@@ -3028,6 +3169,14 @@ h3 {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
+    }
+
+    .conversation-choices {
+        flex-direction: column;
+    }
+
+    .choice-btn {
+        min-width: 100%;
     }
 
     .end-game-content {

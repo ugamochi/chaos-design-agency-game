@@ -126,16 +126,23 @@ const UIModule = (function() {
         if (playerHoursElement) {
             const baseHours = 40; // Weekly hours
             if (playerHours < 0) {
-                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours} ⚠️`);
+                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours} ⚠️ (this week)`);
                 DOM.setStyle(playerHoursElement, { color: '#ff4444', fontWeight: 'bold' });
             } else if (playerHours <= 10) {
-                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours}`);
+                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours} (this week)`);
                 DOM.setStyle(playerHoursElement, { color: '#ff8800' });
             } else {
-                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours}`);
+                DOM.setTextContent(playerHoursElement, `${playerHours.toFixed(1)}/${baseHours} (this week)`);
                 DOM.setStyle(playerHoursElement, { color: '', fontWeight: '' });
             }
         }
+
+        // Update scores
+        const currentScore = window.calculateScore ? window.calculateScore() : 0;
+        const bestScore = window.getBestScore ? window.getBestScore() : 0;
+        
+        DOM.setTextContent('currentScore', currentScore.toLocaleString());
+        DOM.setTextContent('bestScore', bestScore > 0 ? bestScore.toLocaleString() : '--');
 
         window.updateClock();
         displayProjects();
@@ -438,56 +445,85 @@ const UIModule = (function() {
         const bio = member.bio || '';
         const showBio = bio.length > 0;
 
+        const projectName = member.currentAssignment ? (() => {
+            const project = window.GameState.projects.find(p => p.id === member.currentAssignment);
+            return project ? project.name : 'Unknown Project';
+        })() : 'No Project';
+
+        const hoursLeft = member.hours !== undefined && member.hours !== null ? Math.max(0, member.hours) : 40;
+        const hoursDisplay = hoursLeft.toFixed(1);
+
         card.innerHTML = `
-            <div class="team-member-header">
-                <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
-                <div class="team-member-info">
-                    <div class="team-member-name">${member.name}</div>
-                    <div class="team-member-role">${member.role}</div>
-                    <div class="team-member-status ${status.assignmentClass}">
-                        <span class="status-dot"></span>
-                        <span>${status.assignmentLabel}${member.isIll ? ' (Ill)' : ''}</span>
+            <div class="team-member-card-header" data-accordion-toggle>
+                <div class="team-member-header-horizontal">
+                    <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
+                    <div class="team-member-name-role">
+                        <div class="team-member-name">${member.name}</div>
+                        <div class="team-member-role">${member.role}</div>
                     </div>
                 </div>
+                <div class="team-member-info-compact">
+                    <div class="team-member-project">📋 ${projectName}</div>
+                    <div class="team-member-hours-left">⏰ ${hoursDisplay}h left this week</div>
+                </div>
+                <div class="team-member-expand-icon">▼</div>
             </div>
-            ${showBio ? `
-                <div class="team-member-bio">
-                    <p>${bio}</p>
+            <div class="team-member-card-content" style="display: none;">
+                <div class="team-member-status ${status.assignmentClass}">
+                    <span class="status-dot"></span>
+                    <span>${status.assignmentLabel}${member.isIll ? ' (Ill)' : ''}</span>
                 </div>
-            ` : ''}
-            ${traits.length > 0 ? `
-                <div class="team-member-traits">
-                    ${traits.map(trait => `<span class="trait-badge">${trait}</span>`).join('')}
+                ${showBio ? `
+                    <div class="team-member-bio">
+                        <p>${bio}</p>
+                    </div>
+                ` : ''}
+                ${traits.length > 0 ? `
+                    <div class="team-member-traits">
+                        ${traits.map(trait => `<span class="trait-badge">${trait}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="team-member-stats">
+                    <div class="team-member-skill">
+                        <strong>🎯 Skill:</strong>
+                        <span>${member.skill}/5</span>
+                    </div>
+                    <div class="team-member-morale">
+                        <strong>😊 Morale:</strong>
+                        <span>${member.morale && typeof member.morale.current === 'number' ? member.morale.current : 0}%</span>
+                    </div>
+                    <div class="team-member-hours">
+                        <strong>⏰ Hours left this week:</strong>
+                        <span class="${member.hours !== undefined && member.hours !== null && member.hours <= 10 && member.hours >= 0 ? 'hours-low' : ''} ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? 'hours-overtime' : ''}">${(member.hours !== undefined && member.hours !== null ? member.hours : 40).toFixed(1)}/40</span>
+                        ${(member.hours !== undefined && member.hours !== null && member.hours < 0) || (member.hoursWorkedThisWeek && member.hoursWorkedThisWeek > 40) ? `<span class="overtime-indicator" title="Overtime: ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? Math.abs(member.hours).toFixed(1) : (member.hoursWorkedThisWeek - 40).toFixed(1)}h">⚠️</span>` : ''}
+                    </div>
                 </div>
-            ` : ''}
-            <div class="team-member-stats">
-                <div class="team-member-skill">
-                    <strong>🎯 Skill:</strong>
-                    <span>${member.skill}/5</span>
+                <div class="team-member-actions">
+                    <button class="btn btn-small assign-btn" data-member-id="${member.id}">
+                        ${status.isAvailable ? 'Assign to Project' : 'Reassign'}
+                    </button>
                 </div>
-                <div class="team-member-morale">
-                    <strong>😊 Morale:</strong>
-                    <span>${member.morale && typeof member.morale.current === 'number' ? member.morale.current : 0}%</span>
-                </div>
-                <div class="team-member-hours">
-                    <strong>⏰ Hours:</strong>
-                    <span class="${member.hours !== undefined && member.hours !== null && member.hours <= 10 && member.hours >= 0 ? 'hours-low' : ''} ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? 'hours-overtime' : ''}">${(member.hours !== undefined && member.hours !== null ? member.hours : 40).toFixed(1)}/40</span>
-                    ${(member.hours !== undefined && member.hours !== null && member.hours < 0) || (member.hoursWorkedThisWeek && member.hoursWorkedThisWeek > 40) ? `<span class="overtime-indicator" title="Overtime: ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? Math.abs(member.hours).toFixed(1) : (member.hoursWorkedThisWeek - 40).toFixed(1)}h">⚠️</span>` : ''}
-                </div>
-            </div>
-            <div class="team-member-actions">
-                <button class="btn btn-small assign-btn" data-member-id="${member.id}">
-                    ${status.isAvailable ? 'Assign to Project' : 'Reassign'}
-                </button>
             </div>
         `;
 
-    card.querySelector('.assign-btn').addEventListener('click', () => {
-        showAssignmentModal(member.id);
-    });
+        const toggleBtn = card.querySelector('[data-accordion-toggle]');
+        const content = card.querySelector('.team-member-card-content');
+        const expandIcon = card.querySelector('.team-member-expand-icon');
 
-    return card;
-}
+        toggleBtn.addEventListener('click', () => {
+            const isExpanded = content.style.display !== 'none';
+            content.style.display = isExpanded ? 'none' : 'block';
+            expandIcon.textContent = isExpanded ? '▼' : '▲';
+            card.classList.toggle('expanded', !isExpanded);
+        });
+
+        card.querySelector('.assign-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showAssignmentModal(member.id);
+        });
+
+        return card;
+    }
 
     function showAssignmentModal(memberId) {
         const member = window.GameState.team.find(m => m.id === memberId);
@@ -631,12 +667,14 @@ const UIModule = (function() {
     }
 
     function displayConversation(conversation) {
-        window.currentConversation = conversation;
+        const processedConversation = window.replaceHardcodedNames ? window.replaceHardcodedNames(conversation) : conversation;
+        
+        window.currentConversation = processedConversation;
         window.selectedChoiceId = null;
         window.currentConversationStartTime = Date.now();
         window.currentConversationMeta = {
-            linkedProjectId: conversation.linkedProjectId,
-            responseDeadlineHours: conversation.responseDeadlineHours
+            linkedProjectId: processedConversation.linkedProjectId,
+            responseDeadlineHours: processedConversation.responseDeadlineHours
         };
     
         // Update game state but don't update main content (we'll set conversation HTML next)
@@ -656,7 +694,7 @@ const UIModule = (function() {
 
     const player = window.GameState.team.find(m => m.id === 'player');
     const playerBurnout = player ? (player.burnout || 0) : 0;
-    const availableChoices = filterChoicesByBurnout(conversation.choices, playerBurnout);
+    const availableChoices = filterChoicesByBurnout(processedConversation.choices, playerBurnout);
     
     const contentArea = document.getElementById('contentArea');
     const choicesHtml = availableChoices.map(choice => `
@@ -673,13 +711,13 @@ const UIModule = (function() {
     ` : '';
 
     contentArea.innerHTML = `
-        <div class="conversation-container urgency-${conversation.urgency}">
+        <div class="conversation-container urgency-${processedConversation.urgency}">
             <div class="conversation-header">
-                <div class="conversation-from">${conversation.from || 'Client'}</div>
-                <div class="conversation-subject">${conversation.subject || 'Message'}</div>
-                ${conversation.responseDeadlineHours ? `<div class="response-timer">Reply within ${conversation.responseDeadlineHours}h</div>` : ''}
+                <div class="conversation-from">${processedConversation.from || 'Client'}</div>
+                <div class="conversation-subject">${processedConversation.subject || 'Message'}</div>
+                ${processedConversation.responseDeadlineHours ? `<div class="response-timer">Reply within ${processedConversation.responseDeadlineHours}h</div>` : ''}
             </div>
-            <div class="conversation-body">${conversation.body}</div>
+            <div class="conversation-body">${processedConversation.body}</div>
             ${burnoutWarning}
             <div class="conversation-choices">${choicesHtml}</div>
             <div class="conversation-actions">
@@ -695,7 +733,7 @@ const UIModule = (function() {
                 e.stopPropagation();
                 const choiceId = btn.getAttribute('data-choice-id');
                 if (choiceId && window.handleChoice) {
-                    window.handleChoice(conversation.id, choiceId);
+                    window.handleChoice(processedConversation.id, choiceId);
                 } else {
                     console.error('Choice button clicked but handleChoice not available or no choice ID', { choiceId, handleChoice: window.handleChoice });
                 }
@@ -727,7 +765,7 @@ const UIModule = (function() {
             window.showSuccessToast('📌 Conversation postponed - I\'ll remind you later today', 2500);
             
             setTimeout(() => {
-                window.deferConversation(conversation.id);
+                window.deferConversation(processedConversation.id);
                 window.currentConversation = null;
                 window.selectedChoiceId = null;
                 window.displayGameState();
@@ -878,7 +916,7 @@ const UIModule = (function() {
 Week: ${window.GameState.currentWeek} | Day: ${window.GameState.currentDay}
 Money: $${window.GameState.money.toLocaleString()}
 Team Morale: ${window.GameState.teamMorale}
-Average Client Satisfaction: ${calculateAverageSatisfaction() !== null ? Math.round(calculateAverageSatisfaction()) + '%' : 'N/A'}
+Average Client Reputation: ${calculateAverageSatisfaction() !== null ? Math.round(calculateAverageSatisfaction()) + '%' : 'N/A'}
 
 Active Projects: ${window.GameState.projects.filter(p => p.status !== 'complete').length}
 Completed Projects: ${window.GameState.projects.filter(p => p.status === 'complete').length}
@@ -940,7 +978,7 @@ Conversation History: ${window.GameState.conversationHistory.length}
                             <span class="stat-value">${stats.projectsCompleted}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">⭐ Avg Satisfaction</span>
+                            <span class="stat-label">⭐ Avg Reputation</span>
                             <span class="stat-value">${avgSatisfaction}%</span>
                         </div>
                         <div class="stat-item">
@@ -1014,7 +1052,7 @@ Conversation History: ${window.GameState.conversationHistory.length}
     });
 
     modal.querySelector('.btn-share-score').addEventListener('click', () => {
-            const shareText = `Agency Chaos Simulator - ${rank}\nScore: ${score.toLocaleString()}\nProjects: ${stats.projectsCompleted} | Money: $${window.GameState.money.toLocaleString()} | Satisfaction: ${avgSatisfaction}%`;
+            const shareText = `Agency Chaos Simulator - ${rank}\nScore: ${score.toLocaleString()}\nProjects: ${stats.projectsCompleted} | Money: $${window.GameState.money.toLocaleString()} | Reputation: ${avgSatisfaction}%`;
         
         navigator.clipboard.writeText(shareText).then(() => {
             const btn = modal.querySelector('.btn-share-score');

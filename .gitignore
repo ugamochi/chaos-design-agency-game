@@ -1,3 +1,9 @@
 # Philosophy and ideas folder - local only, not synced to GitHub
 Philosophy and ideas/
 
+# Backup zip files
+*.zip
+
+
+
+
