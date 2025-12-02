@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <title>Agency Chaos Simulator</title>
+    <script>
+        // Set base path for GitHub Pages vs local development
+        (function() {
+            const pathname = window.location.pathname;
+            const isGitHubPages = pathname.includes('/chaos-design-agency-game/');
+            window.GAME_BASE_PATH = isGitHubPages ? '' : './chaos-design-agency-game/';
+            if (isGitHubPages) {
+                const base = document.createElement('base');
+                base.href = '/chaos-design-agency-game/';
+                document.head.insertBefore(base, document.head.firstChild);
+            }
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./chaos-design-agency-game/styles.css">
+    <link rel="stylesheet" href="chaos-design-agency-game/styles.css">
 </head>
 <body>
     <div class="game-container">
@@ -225,18 +238,18 @@
         </div>
     </div>
 
-    <script src="./chaos-design-agency-game/utils.js"></script>
-    <script src="./chaos-design-agency-game/constants.js"></script>
-    <script src="./chaos-design-agency-game/dom-helpers.js"></script>
-    <script src="./chaos-design-agency-game/logger.js"></script>
-    <script src="./chaos-design-agency-game/state.js"></script>
-    <script src="./chaos-design-agency-game/projects.js"></script>
-    <script src="./chaos-design-agency-game/conversations.js"></script>
-    <script src="./chaos-design-agency-game/tutorial.js"></script>
-    <script src="./chaos-design-agency-game/animations.js"></script>
-    <script src="./chaos-design-agency-game/office-visualization.js"></script>
-    <script src="./chaos-design-agency-game/timer.js"></script>
-    <script src="./chaos-design-agency-game/ui.js"></script>
-    <script src="./chaos-design-agency-game/game.js"></script>
+    <script src="chaos-design-agency-game/utils.js"></script>
+    <script src="chaos-design-agency-game/constants.js"></script>
+    <script src="chaos-design-agency-game/dom-helpers.js"></script>
+    <script src="chaos-design-agency-game/logger.js"></script>
+    <script src="chaos-design-agency-game/state.js"></script>
+    <script src="chaos-design-agency-game/projects.js"></script>
+    <script src="chaos-design-agency-game/conversations.js"></script>
+    <script src="chaos-design-agency-game/tutorial.js"></script>
+    <script src="chaos-design-agency-game/animations.js"></script>
+    <script src="chaos-design-agency-game/office-visualization.js"></script>
+    <script src="chaos-design-agency-game/timer.js"></script>
+    <script src="chaos-design-agency-game/ui.js"></script>
+    <script src="chaos-design-agency-game/game.js"></script>
 </body>
 </html>
