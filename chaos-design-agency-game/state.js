@@ -35,7 +35,8 @@ const GameStateModule = (function() {
     gamePhase: 'tutorial',
     gameOver: false,
     victoryPath: null,
-    lastSalaryMonth: -1 // Track which month (week / 4) we last paid salaries (-1 means not paid yet)
+    lastSalaryMonth: -1, // Track which month (week / 4) we last paid salaries (-1 means not paid yet)
+    isManuallyPaused: false // Manual pause state (user-controlled)
 };
 
     let AllConversations = [];
@@ -265,6 +266,101 @@ const GameStateModule = (function() {
     });
 }
 
+    function migrateTeamAssignments() {
+        GameState.team.forEach(member => {
+            // Migrate from currentAssignment to assignedProjects
+            if (member.currentAssignment && (!member.assignedProjects || member.assignedProjects.length === 0)) {
+                member.assignedProjects = [member.currentAssignment];
+                // Keep currentAssignment for backward compatibility during transition
+            }
+            if (!member.assignedProjects) {
+                member.assignedProjects = [];
+            }
+            // Initialize hour split fields
+            if (member.hourSplitRatio === undefined) {
+                const count = member.assignedProjects.length || 0;
+                if (count === 0) {
+                    member.hourSplitRatio = 1.0;
+                    member.hoursPerProject = member.hours || 40;
+                } else {
+                    member.hourSplitRatio = 1 / count;
+                    member.hoursPerProject = (member.hours || 40) * member.hourSplitRatio;
+                }
+            }
+        });
+        
+        // Recalculate hour splits for all members
+        if (window.recalculateHourSplits) {
+            window.recalculateHourSplits();
+        }
+    }
+
+    /**
+     * Centralized burnout adjustment - USE EVERYWHERE
+     * BURNOUT RULE: Never write to member.burnout directly!
+     * ALWAYS use adjustBurnout() from state.js
+     */
+    function adjustBurnout(memberId, amount, reason = "Unknown") {
+        const member = GameState.team.find(m => m.id === memberId);
+        if (!member) {
+            console.error(`[BURNOUT ERROR] Member ${memberId} not found`);
+            return 0;
+        }
+        
+        if (member.burnout === undefined || member.burnout === null) {
+            member.burnout = 0;
+        }
+        
+        const oldBurnout = member.burnout;
+        member.burnout = Math.max(0, Math.min(100, member.burnout + amount));
+        const actualChange = member.burnout - oldBurnout;
+        
+        // Only log significant burnout changes (>= 1% change) to reduce console spam
+        if (Math.abs(actualChange) >= 1.0) {
+            console.log(
+                `[BURNOUT] ${member.name}: ${oldBurnout.toFixed(1)}% → ` +
+                `${member.burnout.toFixed(1)}% (${actualChange >= 0 ? '+' : ''}` +
+                `${actualChange.toFixed(2)}%) - ${reason}`
+            );
+        }
+        
+        checkBurnoutThresholds(member, oldBurnout);
+        return actualChange;
+    }
+
+    /**
+     * Calculate overtime burnout (5% per hour)
+     */
+    function calculateOvertimeBurnout(memberId, overtimeHours) {
+        const member = GameState.team.find(m => m.id === memberId);
+        if (!member || !overtimeHours || overtimeHours <= 0) return 0;
+        
+        const burnoutIncrease = overtimeHours * 0.05; // 5% per hour
+        
+        return adjustBurnout(
+            memberId, 
+            burnoutIncrease, 
+            `Overtime: ${overtimeHours.toFixed(1)} hours`
+        );
+    }
+
+    /**
+     * Check burnout thresholds and trigger events
+     */
+    function checkBurnoutThresholds(member, oldBurnout) {
+        const newBurnout = member.burnout;
+        
+        if (oldBurnout < 60 && newBurnout >= 60) {
+            console.warn(`[BURNOUT WARNING] ${member.name} reached 60%!`);
+            // Could queue conversation here: queueConversation('burnout_warning');
+        }
+        
+        if (oldBurnout < 80 && newBurnout >= 80) {
+            console.error(`[BURNOUT CRITICAL] ${member.name} reached 80%!`);
+            // Could queue conversation here: queueConversation('burnout_critical');
+        }
+    }
+
     return {
         GameState,
         AllConversations,
@@ -283,7 +379,11 @@ const GameStateModule = (function() {
         applyTeamMoraleConsequence,
         describeTeamMoraleChange,
         formatConsequences,
-        recordKeyMoment
+        recordKeyMoment,
+        migrateTeamAssignments,
+        adjustBurnout,
+        calculateOvertimeBurnout,
+        checkBurnoutThresholds
     };
 })();
 
@@ -306,4 +406,8 @@ window.applyTeamMoraleConsequence = GameStateModule.applyTeamMoraleConsequence;
 window.describeTeamMoraleChange = GameStateModule.describeTeamMoraleChange;
 window.formatConsequences = GameStateModule.formatConsequences;
 window.recordKeyMoment = GameStateModule.recordKeyMoment;
+window.migrateTeamAssignments = GameStateModule.migrateTeamAssignments;
+window.adjustBurnout = GameStateModule.adjustBurnout;
+window.calculateOvertimeBurnout = GameStateModule.calculateOvertimeBurnout;
+window.checkBurnoutThresholds = GameStateModule.checkBurnoutThresholds;
 

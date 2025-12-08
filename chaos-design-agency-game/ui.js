@@ -3,6 +3,68 @@
 const UIModule = (function() {
     'use strict';
 
+    function initDayProgressBar() {
+        // Create day progress bar if it doesn't exist
+        if (document.querySelector('.day-progress-container')) {
+            return; // Already initialized
+        }
+
+        // Find the clock/time display element
+        const clockElement = document.getElementById('gameClock');
+        const clockParent = clockElement ? clockElement.closest('.header-time, .clock-display') : null;
+        const targetContainer = clockParent || document.querySelector('.header-time') || document.querySelector('.header-top-row');
+        
+        if (!targetContainer) {
+            console.warn('Could not find time block, appending to header');
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'day-progress-container';
+        
+        const bar = document.createElement('div');
+        bar.className = 'day-progress-bar';
+        bar.id = 'dayProgressBar';
+        
+        const label = document.createElement('div');
+        label.className = 'day-progress-label';
+        label.id = 'dayProgressLabel';
+        label.textContent = '9:00 AM';
+        
+        container.appendChild(bar);
+        container.appendChild(label);
+        targetContainer.appendChild(container);
+        
+        console.log('Day progress bar initialized in time block');
+    }
+    
+    function updatePauseIndicator() {
+        const isPaused = window.currentConversation !== null || window.GameState.gameOver;
+        let indicator = document.getElementById('clockPauseIndicator');
+        
+        if (isPaused) {
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'clockPauseIndicator';
+                indicator.className = 'clock-pause-indicator';
+                
+                const header = document.querySelector('.main-content-header');
+                if (header) {
+                    header.appendChild(indicator);
+                }
+            }
+            
+            if (window.GameState.gameOver) {
+                indicator.innerHTML = '⏸️ Game Over';
+            } else if (window.currentConversation) {
+                indicator.innerHTML = '⏸️ Waiting for response';
+            }
+            indicator.style.display = 'inline-flex';
+        } else if (indicator) {
+            indicator.style.display = 'none';
+        }
+    }
+
     function highlightTeamMemberCard(memberId) {
     const card = document.querySelector(`.team-member-card[data-member-id="${memberId}"]`);
     if (!card) return;
@@ -147,6 +209,12 @@ const UIModule = (function() {
         window.updateClock();
         displayProjects();
         displayTeam();
+        
+        // Update all hours indicators
+        window.GameState.team.forEach(member => {
+            updateHoursIndicator(member);
+        });
+        
         if (window.OfficeVisualization && window.OfficeVisualization.update) {
             window.OfficeVisualization.update();
         }
@@ -188,7 +256,20 @@ const UIModule = (function() {
     const progressPercent = Math.round(project.progress * 100);
     const weeksRemaining = Math.ceil(project.weeksRemaining);
 
-        const assignedMembers = window.GameState.team.filter(m => m.currentAssignment === project.id);
+        // Check if ANY phase has team members assigned (for project-level team display)
+    let allAssignedMemberIds = new Set();
+    if (project.phases) {
+        ['management', 'design', 'development', 'review'].forEach(phaseName => {
+            const phase = project.phases[phaseName];
+            if (phase && phase.teamAssigned) {
+                phase.teamAssigned.forEach(id => allAssignedMemberIds.add(id));
+            }
+        });
+    }
+    
+    const assignedMembers = Array.from(allAssignedMemberIds)
+        .map(id => window.GameState.team.find(m => m.id === id))
+        .filter(Boolean);
     const teamAvatars = assignedMembers.map(m => {
         const initials = m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         return `<span class="team-avatar" title="${m.name}">${initials}</span>`;
@@ -271,7 +352,7 @@ const UIModule = (function() {
             const phaseProgress = Math.round(phase.progress * 100);
             const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(project, phaseName) : (phase.status || 'waiting');
             
-            // Get assigned team members for this phase
+            // Get assigned team members for THIS PHASE specifically
             const phaseAssignedMembers = (phase.teamAssigned || [])
                 .map(id => window.GameState.team.find(m => m.id === id))
                 .filter(Boolean);
@@ -397,9 +478,9 @@ const UIModule = (function() {
         warning.className = 'no-assignment-message assign-phase-warning';
         warning.innerHTML = `
             <span class="warning-icon-small">⚠️</span>
-            <strong>NO TEAM ASSIGNED</strong> - This project won't progress!
+            <strong>NO TEAM ON ACTIVE PHASES</strong> - Project not progressing!
             <br>
-            <span class="warning-hint">Click here to auto-assign available workers</span>
+            <span class="warning-hint">Click "Assign to Phases" to assign workers to specific phases</span>
         `;
         card.appendChild(warning);
     }
@@ -421,12 +502,25 @@ const UIModule = (function() {
             const memberCard = createTeamMemberCard(member, status);
             container.appendChild(memberCard);
         });
+        
+        // Ensure hours indicators are updated after cards are created
+        window.GameState.team.forEach(member => {
+            updateHoursIndicator(member);
+        });
 }
 
     function createTeamMemberCard(member, status) {
         const card = document.createElement('div');
         card.className = `team-member-card ${status.assignmentClass}`;
         card.setAttribute('data-member-id', member.id);
+        
+        // Add special state classes for visual indicators
+        if (member.isIll) {
+            card.classList.add('ill');
+        }
+        if (member.hasQuit) {
+            card.classList.add('quit');
+        }
 
         const characteristics = member.characteristics || {};
         const traits = [];
@@ -445,27 +539,41 @@ const UIModule = (function() {
         const bio = member.bio || '';
         const showBio = bio.length > 0;
 
-        const projectName = member.currentAssignment ? (() => {
-            const project = window.GameState.projects.find(p => p.id === member.currentAssignment);
-            return project ? project.name : 'Unknown Project';
-        })() : 'No Project';
-
-        const hoursLeft = member.hours !== undefined && member.hours !== null ? Math.max(0, member.hours) : 40;
-        const hoursDisplay = hoursLeft.toFixed(1);
+        // Derive project assignments from phase assignments
+        const projectsFromPhases = new Set();
+        window.GameState.projects.forEach(project => {
+            if (!project.phases) return;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
+                    projectsFromPhases.add(project);
+                }
+            });
+        });
+        
+        const assignmentList = projectsFromPhases.size > 0
+            ? Array.from(projectsFromPhases).map(p => p.name).join(', ')
+            : 'No Project';
+        
+        const projectName = assignmentList;
+        const assignedProjectCount = projectsFromPhases.size;
 
         card.innerHTML = `
             <div class="team-member-card-header" data-accordion-toggle>
-                <div class="team-member-header-horizontal">
-                    <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
-                    <div class="team-member-name-role">
+                <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
+                
+                <div class="team-member-main-info">
+                    <div class="team-member-identity">
                         <div class="team-member-name">${member.name}</div>
                         <div class="team-member-role">${member.role}</div>
                     </div>
+                    
+                    <div class="team-member-project-compact">
+                        <span class="project-icon">📋</span>
+                        <span class="project-text">${projectName}</span>
+                    </div>
                 </div>
-                <div class="team-member-info-compact">
-                    <div class="team-member-project">📋 ${projectName}</div>
-                    <div class="team-member-hours-left">⏰ ${hoursDisplay}h left this week</div>
-                </div>
+                
                 <div class="team-member-expand-icon">▼</div>
             </div>
             <div class="team-member-card-content" style="display: none;">
@@ -492,11 +600,6 @@ const UIModule = (function() {
                         <strong>😊 Morale:</strong>
                         <span>${member.morale && typeof member.morale.current === 'number' ? member.morale.current : 0}%</span>
                     </div>
-                    <div class="team-member-hours">
-                        <strong>⏰ Hours left this week:</strong>
-                        <span class="${member.hours !== undefined && member.hours !== null && member.hours <= 10 && member.hours >= 0 ? 'hours-low' : ''} ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? 'hours-overtime' : ''}">${(member.hours !== undefined && member.hours !== null ? member.hours : 40).toFixed(1)}/40</span>
-                        ${(member.hours !== undefined && member.hours !== null && member.hours < 0) || (member.hoursWorkedThisWeek && member.hoursWorkedThisWeek > 40) ? `<span class="overtime-indicator" title="Overtime: ${member.hours !== undefined && member.hours !== null && member.hours < 0 ? Math.abs(member.hours).toFixed(1) : (member.hoursWorkedThisWeek - 40).toFixed(1)}h">⚠️</span>` : ''}
-                    </div>
                 </div>
                 <div class="team-member-actions">
                     <button class="btn btn-small assign-btn" data-member-id="${member.id}">
@@ -505,6 +608,13 @@ const UIModule = (function() {
                 </div>
             </div>
         `;
+
+        // Add hours indicator after main-info section
+        const mainInfo = card.querySelector('.team-member-main-info');
+        if (mainInfo) {
+            const hoursIndicator = createHoursIndicator(member);
+            mainInfo.parentElement.insertBefore(hoursIndicator, mainInfo.nextSibling);
+        }
 
         const toggleBtn = card.querySelector('[data-accordion-toggle]');
         const content = card.querySelector('.team-member-card-content');
@@ -523,6 +633,96 @@ const UIModule = (function() {
         });
 
         return card;
+    }
+
+    function createHoursIndicator(member) {
+        const container = document.createElement('div');
+        container.className = 'hours-indicator';
+        container.id = `hours-indicator-${member.id}`;
+        
+        // Add special state classes
+        if (member.hasQuit) {
+            container.classList.add('member-quit');
+        }
+        if (member.isIll) {
+            container.classList.add('member-ill');
+        }
+        
+        // Create the progress bar
+        const bar = document.createElement('div');
+        bar.className = 'hours-bar';
+        bar.id = `hours-bar-${member.id}`;
+        
+        // Create text label
+        const label = document.createElement('div');
+        label.className = 'hours-label';
+        label.id = `hours-label-${member.id}`;
+        
+        container.appendChild(bar);
+        container.appendChild(label);
+        
+        // Initialize with current values (using element references directly)
+        updateHoursIndicatorElements(member, bar, label, container);
+        
+        return container;
+    }
+
+    function updateHoursIndicatorElements(member, bar, label, container) {
+        if (!bar || !label || !container) {
+            return; // Elements don't exist
+        }
+        
+        const currentHours = Math.max(0, member.hours || 0); // Don't show negative visually
+        const maxHours = member.maxHours || 40;
+        const percentage = Math.min(100, (currentHours / maxHours) * 100);
+        
+        // Update bar width
+        bar.style.width = `${percentage}%`;
+        
+        // Update color based on percentage
+        bar.classList.remove('hours-full', 'hours-good', 'hours-low', 'hours-critical', 'hours-debt');
+        
+        if (member.hours < 0) {
+            bar.classList.add('hours-debt');
+        } else if (percentage >= 80) {
+            bar.classList.add('hours-full');
+        } else if (percentage >= 50) {
+            bar.classList.add('hours-good');
+        } else if (percentage >= 20) {
+            bar.classList.add('hours-low');
+        } else {
+            bar.classList.add('hours-critical');
+        }
+        
+        // Update label text
+        const displayHours = Math.round((member.hours || 0) * 10) / 10; // Round to 1 decimal, show actual (including negative)
+        label.textContent = `${displayHours}h / ${maxHours}h`;
+        
+        // Update special states
+        if (member.hasQuit) {
+            container.classList.add('member-quit');
+        } else {
+            container.classList.remove('member-quit');
+        }
+        
+        if (member.isIll) {
+            container.classList.add('member-ill');
+        } else {
+            container.classList.remove('member-ill');
+        }
+    }
+
+    function updateHoursIndicator(member) {
+        const bar = document.getElementById(`hours-bar-${member.id}`);
+        const label = document.getElementById(`hours-label-${member.id}`);
+        const container = document.getElementById(`hours-indicator-${member.id}`);
+        
+        if (!bar || !label || !container) {
+            return; // Elements don't exist yet
+        }
+        
+        // Use the shared update logic
+        updateHoursIndicatorElements(member, bar, label, container);
     }
 
     function showAssignmentModal(memberId) {
@@ -689,6 +889,12 @@ const UIModule = (function() {
         window.updateClock();
         displayProjects();
         displayTeam();
+        
+        // Update hours indicators even when clock is paused
+        window.GameState.team.forEach(member => {
+            updateHoursIndicator(member);
+        });
+        
         window.updateNotificationBadge();
         window.checkUnassignedProjectsWarning();
 
@@ -844,8 +1050,22 @@ const UIModule = (function() {
     function checkUnassignedProjectsWarning() {
         const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
         const unassignedProjects = activeProjects.filter(p => {
-            const assignedMembers = window.GameState.team.filter(m => m.currentAssignment === p.id);
-            return assignedMembers.length === 0;
+            // Check if ANY active phase has team members assigned
+            if (!p.phases) return false;
+            
+            let hasActivePhaseWithTeam = false;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = p.phases[phaseName];
+                if (!phase) return;
+                
+                const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(p, phaseName) : phase.status;
+                if ((phaseStatus === 'active' || phaseStatus === 'ready') && 
+                    phase.teamAssigned && phase.teamAssigned.length > 0) {
+                    hasActivePhaseWithTeam = true;
+                }
+            });
+            
+            return !hasActivePhaseWithTeam;
         });
 
         let warningBanner = document.getElementById('unassignedProjectsWarning');
@@ -865,9 +1085,9 @@ const UIModule = (function() {
             <div class="warning-icon">⚠️</div>
             <div class="warning-content">
                 <strong>Action Required!</strong>
-                ${unassignedProjects.length} project${unassignedProjects.length > 1 ? 's' : ''} ha${unassignedProjects.length > 1 ? 've' : 's'} no team assigned: <em>${projectNames}</em>
+                ${unassignedProjects.length} project${unassignedProjects.length > 1 ? 's' : ''} ha${unassignedProjects.length > 1 ? 've' : 's'} no team on active phases: <em>${projectNames}</em>
                 <br>
-                <span class="warning-subtext">Projects won't make progress until you assign team members. Click on team member cards below to assign them.</span>
+                <span class="warning-subtext">Projects won't progress until you assign workers to specific phases. Click "Assign to Phases" on each project card.</span>
             </div>
             <button class="warning-dismiss" onclick="this.parentElement.style.display='none'">×</button>
         `;
@@ -1202,8 +1422,6 @@ Conversation History: ${window.GameState.conversationHistory.length}
                 toggleResourcesBtn.textContent = isExpanded ? '▼' : '▲';
                 toggleResourcesBtn.classList.toggle('expanded', !isExpanded);
             });
-        } else {
-            console.warn('toggleResourcesBtn not found');
         }
         
         const headerMenuBtn = document.getElementById('headerMenuBtn');
@@ -1255,6 +1473,20 @@ Conversation History: ${window.GameState.conversationHistory.length}
             hideSettingsModal();
             showResetConfirmModal();
         });
+
+        attachButtonListener('pauseBtn', () => {
+            if (window.isTimerRunning && window.isTimerRunning()) {
+                if (window.pauseTimer) {
+                    window.pauseTimer();
+                    Logger.log('Game paused');
+                }
+            } else {
+                if (window.resumeTimer) {
+                    window.resumeTimer();
+                    Logger.log('Game resumed');
+                }
+            }
+        }, 'Error in pause/resume');
 
         const tutorialToggle = DOM.getById ? DOM.getById('tutorialToggle') : document.getElementById('tutorialToggle');
         if (tutorialToggle) {
@@ -1392,104 +1624,78 @@ Conversation History: ${window.GameState.conversationHistory.length}
         const phaseLabels = { management: 'Management', design: 'Design', development: 'Development', review: 'Review' };
         const phaseIcons = { management: '📋', design: '🎨', development: '💻', review: '✅' };
 
-        let phasesHTML = '';
+        // Build phase assignment grid - each phase shows team members with checkboxes
+        let phasesHTML = '<div class="phases-assignment-grid">';
+        
         phaseNames.forEach(phaseName => {
             const phase = project.phases[phaseName];
             if (!phase) return;
 
+            // Initialize teamAssigned array if it doesn't exist
+            if (!phase.teamAssigned) {
+                phase.teamAssigned = [];
+            }
+
             const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(project, phaseName) : phase.status;
-            const currentTeam = (phase.teamAssigned || []).map(id => {
-                const member = window.GameState.team.find(m => m.id === id);
-                return member;
-            }).filter(Boolean);
-
-            // Count how many assignments each member has across all projects/phases
-            const getMemberAssignmentCount = (memberId) => {
-                return window.GameState.projects.reduce((count, p) => {
-                    if (!p.phases || p.status === 'complete') return count;
-                    const activePhases = ['management', 'design', 'development', 'review'].filter(phaseName => {
-                        const phase = p.phases[phaseName];
-                        return phase && phase.teamAssigned && phase.teamAssigned.includes(memberId);
-                    });
-                    return count + activePhases.length;
-                }, 0);
-            };
-
+            const progressPercent = Math.round((phase.progress || 0) * 100);
+            
+            // Build team member checkboxes for this phase
             let teamCheckboxes = '';
             window.GameState.team.forEach(member => {
                 if (member.hasQuit || member.isIll) return;
                 
-                const isAssigned = phase.teamAssigned && phase.teamAssigned.includes(member.id);
+                const isAssignedToPhase = phase.teamAssigned.includes(member.id);
                 const efficiency = window.getEfficiencyForPhase ? window.getEfficiencyForPhase(member, phaseName) : 0.6;
                 const efficiencyPercent = Math.round(efficiency * 100);
-                const assignmentCount = getMemberAssignmentCount(member.id);
-                const assignmentInfo = assignmentCount > 0 ? ` (${assignmentCount} assignments)` : '';
                 
                 let efficiencyClass = 'efficiency-low';
-                let efficiencyIcon = '⚠️';
                 if (efficiency >= 1.0) {
                     efficiencyClass = 'efficiency-high';
-                    efficiencyIcon = '⭐';
                 } else if (efficiency >= 0.9) {
                     efficiencyClass = 'efficiency-medium';
-                    efficiencyIcon = '✓';
                 }
 
                 teamCheckboxes += `
-                    <label class="team-member-option ${isAssigned ? 'assigned' : ''}">
+                    <label class="team-member-checkbox-option ${isAssignedToPhase ? 'assigned' : ''}">
                         <input type="checkbox" 
-                               ${isAssigned ? 'checked' : ''} 
-                               data-member-id="${member.id}">
-                        <span class="member-name">${member.name}${assignmentInfo}</span>
-                        <span class="member-role">${member.role}</span>
-                        <span class="efficiency-badge ${efficiencyClass}" title="Efficiency: ${efficiencyPercent}%">
-                            ${efficiencyIcon} ${efficiencyPercent}%
-                        </span>
+                               ${isAssignedToPhase ? 'checked' : ''} 
+                               data-member-id="${member.id}"
+                               data-phase-name="${phaseName}">
+                        <span class="member-name-short">${member.name}</span>
+                        <span class="efficiency-dot ${efficiencyClass}" title="${member.role}: ${efficiencyPercent}% efficiency"></span>
                     </label>
                 `;
             });
-
-            const freelancerCost = (project.complexity || 1) * 200;
-            const canHireFreelancer = !phase.freelancerHired && window.GameState.money >= freelancerCost;
-
+            
             phasesHTML += `
-                <div class="phase-assignment-section phase-${phaseStatus}" data-phase-name="${phaseName}">
-                    <div class="phase-assignment-header">
-                        <span class="phase-icon-large">${phaseIcons[phaseName]}</span>
-                        <div>
-                            <h3>${phaseLabels[phaseName]}</h3>
-                            <span class="phase-status-badge status-${phaseStatus}">${phaseStatus}</span>
+                <div class="phase-assignment-column phase-${phaseStatus}" data-phase-name="${phaseName}">
+                    <div class="phase-column-header">
+                        <h3>${phaseLabels[phaseName]}</h3>
+                        <span class="phase-status-badge status-${phaseStatus}">${phaseStatus}</span>
+                        <div class="phase-progress-bar-mini">
+                            <div class="phase-progress-fill-mini" style="width: ${progressPercent}%"></div>
                         </div>
                     </div>
-                    <div class="team-assignment-list">
-                        ${teamCheckboxes || '<p class="no-team-message">No team members available</p>'}
+                    <div class="team-checkbox-list">
+                        ${teamCheckboxes || '<p class="no-team-message">No team available</p>'}
                     </div>
-                    ${canHireFreelancer ? `
-                        <button class="btn btn-secondary btn-hire-freelancer" 
-                                data-phase="${phaseName}"
-                                title="Hire freelancer for $${freelancerCost.toLocaleString()} (1.5x speed)">
-                            👤 Hire Freelancer ($${freelancerCost.toLocaleString()})
-                        </button>
-                    ` : phase.freelancerHired ? `
-                        <div class="freelancer-hired">👤 Freelancer already hired</div>
-                    ` : `
-                        <div class="freelancer-unavailable">Need $${freelancerCost.toLocaleString()} to hire freelancer</div>
-                    `}
                 </div>
             `;
         });
+        phasesHTML += '</div>';
 
         modal.innerHTML = `
-            <div class="modal-content phase-assignment-modal">
+            <div class="modal-content phase-assignment-modal phase-assignment-modal-wide">
                 <h2>Assign Team to Phases: ${project.name}</h2>
                 <div class="assignment-info">
-                    <p>💡 Workers can be assigned to multiple projects and phases. Hours are split evenly across all assignments.</p>
+                    <p><strong>⚙️ Phase-Specific Assignment:</strong> Workers only contribute to phases they're assigned to.</p>
+                    <p><strong>⏰ Hour Splitting:</strong> If assigned to multiple active phases, hours are split evenly.</p>
+                    <p><strong>💤 Idle Workers:</strong> Unassigned workers sit idle and don't contribute to any phase.</p>
                 </div>
-                <div class="phases-assignment-container">
-                    ${phasesHTML}
-                </div>
+                
+                ${phasesHTML}
+                
                 <div class="modal-actions">
-                    <button class="btn btn-secondary btn-assign-all-phases" data-project-id="${projectId}">Assign Selected to All Phases</button>
                     <button class="btn btn-primary btn-save-phases">Save Assignments</button>
                     <button class="btn btn-secondary btn-cancel-phases">Cancel</button>
                 </div>
@@ -1498,82 +1704,36 @@ Conversation History: ${window.GameState.conversationHistory.length}
 
         document.body.appendChild(modal);
 
-        // Handle "Assign to All Phases" button
-        const assignAllBtn = modal.querySelector('.btn-assign-all-phases');
-        if (assignAllBtn) {
-            assignAllBtn.addEventListener('click', () => {
-                // Get all checked members
-                const checkedMembers = [];
-                modal.querySelectorAll('.phase-assignment-section input[type="checkbox"]:checked').forEach(checkbox => {
-                    const memberId = checkbox.getAttribute('data-member-id');
-                    if (memberId && !checkedMembers.includes(memberId)) {
-                        checkedMembers.push(memberId);
-                    }
-                });
-                
-                if (checkedMembers.length === 0) {
-                    window.showWarningToast('Please select at least one team member first', 2000);
-                    return;
-                }
-                
-                // Assign each checked member to all phases
-                checkedMembers.forEach(memberId => {
-                    window.assignTeamMemberToAllPhases(memberId, projectId);
-                });
-                
-                window.showSuccessToast(`Assigned ${checkedMembers.length} team member(s) to all phases`, 2000);
-                modal.remove();
-                window.displayGameState();
-                window.saveState();
-            });
-        }
-
-        // Handle freelancer hiring
-        modal.querySelectorAll('.btn-hire-freelancer').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const phaseName = btn.getAttribute('data-phase');
-                const result = window.hireFreelancer(projectId, phaseName);
-                if (result.success) {
-                    window.showSuccessToast(result.message, 3000);
-                    modal.remove();
-                    window.displayGameState();
-                    window.saveState();
-                } else {
-                    window.showWarningToast(result.message, 3000);
-                }
-            });
-        });
 
         // Handle save
         modal.querySelector('.btn-save-phases').addEventListener('click', () => {
+            // Save phase-specific assignments
             phaseNames.forEach(phaseName => {
                 const phase = project.phases[phaseName];
                 if (!phase) return;
 
-                // Find the phase section by data attribute (more reliable)
-                const phaseSection = modal.querySelector(`.phase-assignment-section[data-phase-name="${phaseName}"]`);
-                if (!phaseSection) return;
+                // Collect checked members for this phase
+                const phaseColumn = modal.querySelector(`.phase-assignment-column[data-phase-name="${phaseName}"]`);
+                if (!phaseColumn) return;
 
-                const phaseCheckboxes = phaseSection.querySelectorAll('input[type="checkbox"]');
-                const newTeam = [];
+                const assignedToPhase = [];
+                const checkboxes = phaseColumn.querySelectorAll('input[type="checkbox"][data-phase-name="' + phaseName + '"]');
                 
-                phaseCheckboxes.forEach(checkbox => {
-                    if (checkbox.checked && !checkbox.disabled) {
+                checkboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
                         const memberId = checkbox.getAttribute('data-member-id');
                         if (memberId) {
-                            newTeam.push(memberId);
-                            window.assignTeamMemberToPhase(memberId, projectId, phaseName);
-                        }
-                    } else {
-                        const memberId = checkbox.getAttribute('data-member-id');
-                        if (memberId) {
-                            window.removeTeamMemberFromPhase(memberId, projectId, phaseName);
+                            assignedToPhase.push(memberId);
                         }
                     }
                 });
 
-                phase.teamAssigned = newTeam;
+                // Update phase team assignments
+                phase.teamAssigned = assignedToPhase;
             });
+
+            // Clear old project-level assignments (we're now phase-specific only)
+            project.teamAssigned = [];
 
             window.displayGameState();
             window.saveState();
@@ -1656,6 +1816,32 @@ Conversation History: ${window.GameState.conversationHistory.length}
             updateVisualClock(hour, minute);
         }
     
+        // Update progress bar label
+        const label = document.getElementById('dayProgressLabel');
+        if (label) {
+            label.textContent = timeString;
+        }
+        
+        // Calculate progress (9 AM = 0%, 6 PM = 100%)
+        const startHour = 9;
+        const endHour = 18;
+        const totalMinutes = (endHour - startHour) * 60; // 540 minutes
+        const elapsedMinutes = ((hour - startHour) * 60) + minute;
+        const progress = Math.min(100, Math.max(0, (elapsedMinutes / totalMinutes) * 100));
+        
+        // Update progress bar
+        const bar = document.getElementById('dayProgressBar');
+        if (bar) {
+            bar.style.width = `${progress}%`;
+            
+            // Add pulsing animation when day is almost over (>90%)
+            if (progress >= 90) {
+                bar.classList.add('ending');
+            } else {
+                bar.classList.remove('ending');
+            }
+        }
+    
     // Calculate remaining work hours (work day: 9 AM to 6 PM = 9 hours)
     const workDayStart = 9;
     const workDayEnd = 18;
@@ -1714,6 +1900,98 @@ Conversation History: ${window.GameState.conversationHistory.length}
     }
 }
 
+    function updatePauseButton() {
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (!pauseBtn) return;
+        
+        const isPaused = window.isGamePaused && window.isGamePaused();
+        const isManuallyPaused = window.GameState.isManuallyPaused;
+        const isConversation = window.currentConversation !== null;
+        const isGameOver = window.GameState.gameOver;
+        
+        // Disable button during conversation or game over
+        if (isConversation || isGameOver) {
+            pauseBtn.disabled = true;
+            pauseBtn.style.opacity = '0.5';
+            pauseBtn.style.cursor = 'not-allowed';
+            
+            // When conversation is active, show pause icon (game IS paused by conversation)
+            // and tooltip should match the actual state
+            if (isConversation) {
+                pauseBtn.classList.remove('paused'); // Show pause icon (⏸️)
+                if (isManuallyPaused) {
+                    pauseBtn.title = 'Cannot resume during conversation';
+                } else {
+                    pauseBtn.title = 'Cannot pause during conversation';
+                }
+            } else if (isGameOver) {
+                // Game over: show pause icon since game is stopped
+                pauseBtn.classList.remove('paused');
+                pauseBtn.title = 'Game over';
+            }
+        } else {
+            // Button is enabled - show correct state based on manual pause
+            pauseBtn.disabled = false;
+            pauseBtn.style.opacity = '1';
+            pauseBtn.style.cursor = 'pointer';
+            
+            if (isManuallyPaused) {
+                pauseBtn.classList.add('paused');
+                pauseBtn.title = 'Resume game (Space)';
+            } else {
+                pauseBtn.classList.remove('paused');
+                pauseBtn.title = 'Pause game (Space)';
+            }
+        }
+        
+        // Update body class for global paused state
+        if (isPaused) {
+            document.body.classList.add('game-paused');
+        } else {
+            document.body.classList.remove('game-paused');
+        }
+    }
+
+    function initPauseButton() {
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (!pauseBtn) {
+            console.warn('Pause button not found in DOM');
+            return;
+        }
+        
+        // Click handler
+        pauseBtn.addEventListener('click', () => {
+            if (pauseBtn.disabled) return;
+            window.togglePause && window.togglePause();
+        });
+        
+        // Keyboard handler (Space or P key)
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in input field
+            if (e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'TEXTAREA' || 
+                e.target.isContentEditable) {
+                return;
+            }
+            
+            // Space or P key
+            if (e.code === 'Space' || e.key === 'p' || e.key === 'P') {
+                e.preventDefault(); // Prevent page scroll on space
+                if (!pauseBtn.disabled) {
+                    window.togglePause && window.togglePause();
+                }
+            }
+        });
+        
+        // Initialize button state
+        updatePauseButton();
+        
+        // Update button state periodically (in case of auto-pause)
+        setInterval(updatePauseButton, 100);
+        
+        console.log('Pause button initialized');
+    }
+
     function advanceClock() {
         const clockElement = document.getElementById('gameClock');
         if (clockElement) {
@@ -1734,6 +2012,10 @@ Conversation History: ${window.GameState.conversationHistory.length}
     }
 
     return {
+        initDayProgressBar,
+        updateClock,
+        updatePauseButton,
+        initPauseButton,
         highlightTeamMemberCard,
         showProjectCompletion,
         showWeekSummary,
@@ -1742,6 +2024,8 @@ Conversation History: ${window.GameState.conversationHistory.length}
         createProjectCard,
         displayTeam,
         createTeamMemberCard,
+        createHoursIndicator,
+        updateHoursIndicator,
         showAssignmentModal,
         calculateAverageSatisfaction,
         updateMainContent,
@@ -1764,13 +2048,16 @@ Conversation History: ${window.GameState.conversationHistory.length}
         showHighScoresModal,
         getGameAttempts,
         saveGameAttempt,
-        updateClock,
         showPhaseAssignmentModal,
         advanceClock
     };
 })();
 
 // Expose on window for backward compatibility
+window.initDayProgressBar = UIModule.initDayProgressBar;
+window.updateClock = UIModule.updateClock;
+window.updatePauseButton = UIModule.updatePauseButton;
+window.initPauseButton = UIModule.initPauseButton;
 window.highlightTeamMemberCard = UIModule.highlightTeamMemberCard;
 window.showProjectCompletion = UIModule.showProjectCompletion;
 window.showWeekSummary = UIModule.showWeekSummary;
@@ -1779,6 +2066,8 @@ window.displayProjects = UIModule.displayProjects;
 window.createProjectCard = UIModule.createProjectCard;
 window.displayTeam = UIModule.displayTeam;
 window.createTeamMemberCard = UIModule.createTeamMemberCard;
+window.createHoursIndicator = UIModule.createHoursIndicator;
+window.updateHoursIndicator = UIModule.updateHoursIndicator;
 window.showAssignmentModal = UIModule.showAssignmentModal;
 window.calculateAverageSatisfaction = UIModule.calculateAverageSatisfaction;
 window.updateMainContent = UIModule.updateMainContent;
@@ -1801,7 +2090,6 @@ window.hideCreditsModal = UIModule.hideCreditsModal;
 window.showHighScoresModal = UIModule.showHighScoresModal;
 window.getGameAttempts = UIModule.getGameAttempts;
 window.saveGameAttempt = UIModule.saveGameAttempt;
-window.updateClock = UIModule.updateClock;
 window.showPhaseAssignmentModal = UIModule.showPhaseAssignmentModal;
 window.advanceClock = UIModule.advanceClock;
 

@@ -1,4 +1,6 @@
 // Project and team management logic
+// BURNOUT RULE: Never write to member.burnout directly!
+// ALWAYS use adjustBurnout() from state.js
 
 const ProjectsModule = (function() {
     'use strict';
@@ -122,8 +124,13 @@ const ProjectsModule = (function() {
 
         // Scale the change to tick rate
         burnoutChange *= tickMultiplier;
-        player.burnout = Math.max(0, Math.min(100, player.burnout + burnoutChange));
+        
+        // Use centralized burnout adjustment
+        if (window.adjustBurnout && Math.abs(burnoutChange) > 0.001) {
+            window.adjustBurnout(player.id, burnoutChange, 'Project work stress');
+        }
 
+        // Check for burnout threshold events (checkBurnoutThresholds handles 60% and 80% warnings)
         if (player.burnout >= 80 && !player.highBurnoutTriggered) {
             window.recordKeyMoment('Art Director Burnout Warning', 'You\'re experiencing severe burnout. This is affecting your team and decision-making.', 'crisis');
             player.highBurnoutTriggered = true;
@@ -253,6 +260,18 @@ const ProjectsModule = (function() {
     else if (project.weeksRemaining <= 1.5) risk.timeline = 'medium';
     else risk.timeline = 'low';
 
+    // Add scope creep risk
+    const scopeCreepCount = project.scopeCreepCount || 0;
+    if (scopeCreepCount >= 3) {
+        risk.scopeCreep = 'high';
+    } else if (scopeCreepCount >= 2) {
+        risk.scopeCreep = 'medium';
+    } else if (scopeCreepCount >= 1) {
+        risk.scopeCreep = 'low';
+    } else {
+        risk.scopeCreep = 'none';
+    }
+
     risk.scopeLabel = hoursDelta > 0 ? `+${Math.round(hoursDelta)}h` : hoursDelta < 0 ? `${Math.round(hoursDelta)}h` : 'On estimate';
     risk.timelineLabel = project.weeksRemaining <= 0 ? 'Overdue' : `${Math.ceil(project.weeksRemaining)} wk left`;
     risk.satisfactionLabel = `${Math.round(project.satisfaction)}% reputation`;
@@ -262,7 +281,10 @@ const ProjectsModule = (function() {
 
     function calculateSatisfactionScores(project) {
         const profile = getClientProfile(project);
-        const assignedMembers = window.GameState.team.filter(m => m.currentAssignment === project.id);
+        const assignedMembers = window.GameState.team.filter(m => 
+            (m.assignedProjects && m.assignedProjects.includes(project.id)) || 
+            (m.currentAssignment === project.id) // backward compatibility
+        );
 
     const avgSkill = assignedMembers.length
         ? assignedMembers.reduce((sum, m) => {
@@ -329,6 +351,12 @@ const ProjectsModule = (function() {
                 window.GameState.gameStats.scopeCreepHandled++;
             }
 
+            // Track scope creep count per project (for "death by a thousand cuts" trigger)
+            // Only increment if there's an actual scope change (delta or hoursDelta)
+            if (entry.delta !== undefined || entry.hoursDelta !== undefined) {
+                project.scopeCreepCount = (project.scopeCreepCount || 0) + 1;
+            }
+
             if (entry.timelineWeeks) {
                 project.totalWeeks += entry.timelineWeeks;
                 project.weeksRemaining += entry.timelineWeeks;
@@ -339,15 +367,31 @@ const ProjectsModule = (function() {
                 // Money will be added to balance when project is completed
             }
 
+            // Apply explicit team stress from scope change entry
             if (entry.teamStress && entry.teamStress !== 0) {
                 window.GameState.team
-                    .filter(m => m.currentAssignment === project.id)
+                    .filter(m => (m.assignedProjects && m.assignedProjects.includes(project.id)) || (m.currentAssignment === project.id))
                     .forEach(member => window.adjustMemberMorale(member, entry.teamStress));
+                window.recalculateTeamMorale();
+            }
+
+            // Automatic team stress when scope creep count reaches 2+ (cumulative stress)
+            const scopeCreepCount = project.scopeCreepCount || 0;
+            if (scopeCreepCount >= 2) {
+                // Additional stress for each scope creep beyond the first
+                // More scope creeps = more stress
+                const additionalStress = Math.min(5, (scopeCreepCount - 1) * 2); // Max 5 stress per check
+                window.GameState.team
+                    .filter(m => (m.assignedProjects && m.assignedProjects.includes(project.id)) || (m.currentAssignment === project.id))
+                    .forEach(member => {
+                        window.adjustMemberMorale(member, -additionalStress);
+                    });
                 window.recalculateTeamMorale();
             }
 
             project.progress = Math.min(1, project.hoursCompleted / project.estimatedHours);
             updateProjectSatisfaction(project);
+            updateProjectRisk(project); // Update risk to include scope creep risk
         });
     }
 
@@ -375,7 +419,7 @@ const ProjectsModule = (function() {
             });
             if (moraleDelta !== 0) {
                 window.GameState.team
-                    .filter(m => m.currentAssignment === project.id)
+                    .filter(m => (m.assignedProjects && m.assignedProjects.includes(project.id)) || (m.currentAssignment === project.id))
                     .forEach(member => window.adjustMemberMorale(member, moraleDelta));
                 window.recalculateTeamMorale();
             }
@@ -690,15 +734,7 @@ const ProjectsModule = (function() {
         // Check for phase activation (waiting -> active/ready)
         if (previousStatus === 'waiting' && (newStatus === 'active' || newStatus === 'ready')) {
             triggerPhaseActivation(project, phaseName);
-            // Auto-assign project team members to newly activated phases
-            if (!phase.teamAssigned) {
-                phase.teamAssigned = [];
-            }
-            (project.teamAssigned || []).forEach(memberId => {
-                if (!phase.teamAssigned.includes(memberId)) {
-                    phase.teamAssigned.push(memberId);
-                }
-            });
+            // No auto-assignment - workers contribute to active phase via project assignment
         }
         
         phase.status = newStatus;
@@ -708,10 +744,14 @@ const ProjectsModule = (function() {
             return;
         }
         
-        // Get team members assigned to this phase
-        const phaseTeam = phase.teamAssigned || [];
+        // Get team members assigned to THIS PHASE specifically
+        // Initialize teamAssigned array if it doesn't exist
+        if (!phase.teamAssigned) {
+            phase.teamAssigned = [];
+        }
+        
         const assignedMembers = window.GameState.team.filter(m => 
-            phaseTeam.includes(m.id) && !m.isIll
+            phase.teamAssigned.includes(m.id) && !m.isIll
         );
         
         if (assignedMembers.length === 0 && !phase.freelancerHired) {
@@ -720,10 +760,10 @@ const ProjectsModule = (function() {
         
         // Base progress rates (faster pacing!)
         const baseProgressRates = {
-            management: 0.20,
-            design: 0.15,
-            development: 0.12,
-            review: 0.10
+            management: 2.0,    // 10x faster
+            design: 1.5,        // 10x faster
+            development: 1.0,   // 10x faster
+            review: 1.8         // 10x faster
         };
         const baseProgress = baseProgressRates[phaseName] || 0.10;
         
@@ -736,6 +776,12 @@ const ProjectsModule = (function() {
         assignedMembers.forEach(member => {
             if (member.hours === undefined || member.hours === null) {
                 member.hours = 40;
+            }
+            
+            // Workers at 0 hours don't contribute (they've exhausted their weekly hours)
+            // Player can still work in overtime (negative hours)
+            if (member.id !== 'player' && member.hours <= 0) {
+                return; // Worker is exhausted, skip their contribution
             }
             
             const efficiency = getEfficiencyForPhase(member, phaseName);
@@ -751,109 +797,45 @@ const ProjectsModule = (function() {
             
             const moraleMultiplier = (member.morale?.current || 50) / 100;
             
-            // Count total active assignments across ALL projects and phases for this member
-            const totalAssignments = window.GameState.projects.reduce((count, p) => {
-                if (!p.phases || p.status === 'complete') return count;
-                const activePhases = ['management', 'design', 'development', 'review'].filter(ph => {
-                    const phase = p.phases[ph];
-                    return phase && 
-                           phase.teamAssigned && 
-                           phase.teamAssigned.includes(member.id) && 
-                           phase.status !== 'complete' && 
-                           phase.status !== 'waiting';
+            // Count total ACTIVE phase assignments across ALL projects
+            // A worker assigned to multiple active phases splits their hours
+            let totalActivePhaseAssignments = 0;
+            window.GameState.projects.forEach(proj => {
+                if (!proj.phases) return;
+                ['management', 'design', 'development', 'review'].forEach(phName => {
+                    const ph = proj.phases[phName];
+                    if (ph && ph.teamAssigned && ph.teamAssigned.includes(member.id)) {
+                        const phStatus = window.getPhaseStatus ? window.getPhaseStatus(proj, phName) : ph.status;
+                        // Only count active/ready phases (not waiting or complete)
+                        if (phStatus === 'active' || phStatus === 'ready') {
+                            totalActivePhaseAssignments++;
+                        }
+                    }
                 });
-                return count + activePhases.length;
-            }, 0);
+            });
             
-            if (totalAssignments === 0) {
-                return; // No assignments, skip
+            if (totalActivePhaseAssignments === 0) {
+                return; // No active assignments, worker sits idle
             }
             
-            // Calculate hours per assignment (split evenly across all assignments)
-            const currentHours = member.hours || 0;
-            let hoursPerAssignment = 0;
+            // Calculate time fraction spent on THIS phase
+            // Mike on 1 active phase: 100% time (1.0)
+            // Mike on 3 active phases: 33% time per phase (0.33)
+            const timeFraction = 1 / totalActivePhaseAssignments;
             
-            if (member.id === 'player') {
-                // Player can work even with 0 or negative hours (overtime)
-                if (currentHours > 0) {
-                    hoursPerAssignment = currentHours / totalAssignments;
-                } else {
-                    // Overtime: player can still work at full efficiency, but gets burnout penalty
-                    hoursPerAssignment = maxDailyHours / totalAssignments;
-                }
-            } else {
-                // Non-player members: can't work overtime efficiently
-                if (currentHours > 0) {
-                    hoursPerAssignment = Math.max(0, currentHours) / totalAssignments;
-                } else {
-                    // Overtime: split base hours across assignments at 50% efficiency
-                    hoursPerAssignment = (maxDailyHours / totalAssignments) * 0.5;
-                }
+            // Handle overtime penalty for non-players
+            let overtimePenalty = 1.0;
+            if (member.id !== 'player' && member.hours < 0) {
+                overtimePenalty = 0.5; // 50% efficiency in overtime
             }
             
             // Calculate efficiency contribution for THIS phase
-            // Efficiency is based on the fraction of daily hours spent on this specific phase
-            const efficiencyContribution = efficiency * skillMultiplier * moraleMultiplier * (hoursPerAssignment / maxDailyHours);
+            // Based on time fraction, skill, morale, and overtime status
+            const efficiencyContribution = efficiency * skillMultiplier * moraleMultiplier * timeFraction * overtimePenalty;
             totalEfficiency += efficiencyContribution;
             
-            // Deduct hours for this member (only once per day, not per phase)
-            // We'll track this per member to avoid double-deducting
-            // Skip hour deduction in real-time mode - timer handles it
-            if (!isRealTimeMode && !member._hoursDeductedToday) {
-                const hoursWorkedThisWeek = member.hoursWorkedThisWeek || 0;
-                let totalHoursToDeduct = 0;
-                
-                if (member.id === 'player') {
-                    // Player can work up to maxDailyHours even if hours are 0 or negative
-                    totalHoursToDeduct = Math.min(currentHours > 0 ? currentHours : maxDailyHours, maxDailyHours);
-                } else {
-                    // Non-player members: limited by available hours
-                    totalHoursToDeduct = Math.min(currentHours > 0 ? currentHours : maxDailyHours * 0.5, maxDailyHours);
-                }
-                
-                const newHoursWorked = hoursWorkedThisWeek + totalHoursToDeduct;
-                member.hoursWorkedThisWeek = newHoursWorked;
-                
-                const wasOvertime = currentHours <= 0;
-                if (currentHours > 0) {
-                    member.hours = currentHours - totalHoursToDeduct;
-                } else if (member.id === 'player') {
-                    // Player can go negative hours (overtime)
-                    member.hours = currentHours - totalHoursToDeduct;
-                }
-                
-                if (member.id === 'player') {
-                    // Player can work beyond 40 hours, but each extra hour costs 5% burnout
-                    if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                        const overtimeHours = wasOvertime ? totalHoursToDeduct : (newHoursWorked - baseWeeklyHours);
-                        const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                        const newOvertime = overtimeHours - previousOvertime;
-                        
-                        if (newOvertime > 0 || wasOvertime) {
-                            const burnoutIncrease = Math.floor((wasOvertime ? totalHoursToDeduct : newOvertime) * 5);
-                            if (member.burnout !== undefined) {
-                                member.burnout = Math.min(100, (member.burnout || 0) + burnoutIncrease);
-                            }
-                        }
-                    }
-                } else {
-                    // Non-player members: overtime affects morale
-                    if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                        const overtimeHours = wasOvertime ? totalHoursToDeduct : (newHoursWorked - baseWeeklyHours);
-                        const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                        const newOvertime = overtimeHours - previousOvertime;
-                        
-                        if (newOvertime > 0 || wasOvertime) {
-                            const moralePenalty = Math.floor((wasOvertime ? totalHoursToDeduct : newOvertime) * 3);
-                            if (member.morale && typeof member.morale.current === 'number') {
-                                window.adjustMemberMorale(member, -moralePenalty);
-                            }
-                        }
-                    }
-                }
-                
-                member._hoursDeductedToday = true;
-            }
+            // Hours are deducted in timer.js ONLY - we just READ them here
+            // Timer handles hour deduction, overtime penalties, and hoursWorkedThisWeek tracking
         });
         
         // Add freelancer if hired (1.5x speed, skill 3-5)
@@ -906,36 +888,18 @@ const ProjectsModule = (function() {
             project.satisfaction = Math.min(100, project.satisfaction + 2);
         }
         
-        // Check if next phase can start and auto-assign team members who are assigned to the project
+        // Check if next phase can start
         if (phaseName === 'management' && project.phases.design.status === 'waiting') {
             if (canStartPhase(project, 'design')) {
                 project.phases.design.status = 'ready';
-                // Auto-assign project team members to the new phase
-                (project.teamAssigned || []).forEach(memberId => {
-                    if (!project.phases.design.teamAssigned.includes(memberId)) {
-                        project.phases.design.teamAssigned.push(memberId);
-                    }
-                });
             }
         } else if (phaseName === 'design' && project.phases.development.status === 'waiting') {
             if (canStartPhase(project, 'development')) {
                 project.phases.development.status = 'ready';
-                // Auto-assign project team members to the new phase
-                (project.teamAssigned || []).forEach(memberId => {
-                    if (!project.phases.development.teamAssigned.includes(memberId)) {
-                        project.phases.development.teamAssigned.push(memberId);
-                    }
-                });
             }
         } else if (phaseName === 'development' && project.phases.review.status === 'waiting') {
             if (canStartPhase(project, 'review')) {
                 project.phases.review.status = 'ready';
-                // Auto-assign project team members to the new phase
-                (project.teamAssigned || []).forEach(memberId => {
-                    if (!project.phases.review.teamAssigned.includes(memberId)) {
-                        project.phases.review.teamAssigned.push(memberId);
-                    }
-                });
             }
         }
     }
@@ -1033,7 +997,7 @@ const ProjectsModule = (function() {
             
             // Legacy system (for old projects without phases)
             const assignedMembers = window.GameState.team.filter(m =>
-                m.currentAssignment === project.id && !m.isIll
+                ((m.assignedProjects && m.assignedProjects.includes(project.id)) || (m.currentAssignment === project.id)) && !m.isIll
             );
 
             if (assignedMembers.length === 0) {
@@ -1093,47 +1057,9 @@ const ProjectsModule = (function() {
                 }
                 
                 if (hoursToSpend > 0) {
-                    // Only deduct hours and update hoursWorkedThisWeek in legacy mode
-                    // In real-time mode, timer handles hour deduction
-                    if (!isRealTimeMode) {
-                        const newHoursWorked = hoursWorkedThisWeek + hoursToSpend;
-                        member.hoursWorkedThisWeek = newHoursWorked;
-                        
-                        const wasOvertime = currentHours <= 0;
-                        const hoursBefore = currentHours;
-                        member.hours = currentHours - hoursToSpend;
-                        
-                        // Apply overtime penalties
-                        if (member.id === 'player') {
-                            // Player can work beyond 40 hours, but each extra hour costs 5% burnout
-                            if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                                const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
-                                const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                                const newOvertime = overtimeHours - previousOvertime;
-                                
-                                if (newOvertime > 0 || wasOvertime) {
-                                    const burnoutIncrease = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 5);
-                                    if (member.burnout !== undefined) {
-                                        member.burnout = Math.min(100, (member.burnout || 0) + burnoutIncrease);
-                                    }
-                                }
-                            }
-                        } else {
-                            // Non-player members: overtime affects morale
-                            if (newHoursWorked > baseWeeklyHours || wasOvertime) {
-                                const overtimeHours = wasOvertime ? hoursToSpend : (newHoursWorked - baseWeeklyHours);
-                                const previousOvertime = Math.max(0, hoursWorkedThisWeek - baseWeeklyHours);
-                                const newOvertime = overtimeHours - previousOvertime;
-                                
-                                if (newOvertime > 0 || wasOvertime) {
-                                    const moralePenalty = Math.floor((wasOvertime ? hoursToSpend : newOvertime) * 3);
-                                    if (member.morale && typeof member.morale.current === 'number') {
-                                        window.adjustMemberMorale(member, -moralePenalty);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Hours are deducted in timer.js ONLY - we just READ them here
+                    // Timer handles hour deduction, overtime penalties, and hoursWorkedThisWeek tracking
+                    const availableHours = member.hours;
                     
                     project.hoursCompleted = (project.hoursCompleted || 0) + hoursToSpend;
                 }
@@ -1242,9 +1168,16 @@ const ProjectsModule = (function() {
         }
 
         window.GameState.team.forEach(member => {
-            if (member.currentAssignment === projectId) {
-                member.currentAssignment = null;
-                member.daysOnAssignment = 0;
+            if ((member.assignedProjects && member.assignedProjects.includes(projectId)) || (member.currentAssignment === projectId)) {
+                if (member.assignedProjects) {
+                    member.assignedProjects = member.assignedProjects.filter(id => id !== projectId);
+                }
+                if (member.currentAssignment === projectId) {
+                    member.currentAssignment = null;
+                }
+                if ((!member.assignedProjects || member.assignedProjects.length === 0) && !member.currentAssignment) {
+                    member.daysOnAssignment = 0;
+                }
                 if (member.morale) {
                     member.morale.current = Math.min(100, member.morale.current + 2);
                 }
@@ -1289,62 +1222,56 @@ const ProjectsModule = (function() {
         mood = 'happy';
     }
 
-    let assignmentClass = member.currentAssignment ? 'working' : 'available';
-    let assignmentLabel = member.currentAssignment ? 'Working' : 'Available';
+    // Check if member is assigned to any phase (derive assignment from phases)
+    let assignedToProject = null;
+    let hasAnyPhaseAssignment = false;
+    window.GameState.projects.forEach(project => {
+        if (!project.phases) return;
+        ['management', 'design', 'development', 'review'].forEach(phaseName => {
+            const phase = project.phases[phaseName];
+            if (phase && phase.teamAssigned && phase.teamAssigned.includes(memberId)) {
+                hasAnyPhaseAssignment = true;
+                if (!assignedToProject) {
+                    assignedToProject = project; // First project found
+                }
+            }
+        });
+    });
+    
+    let assignmentClass = hasAnyPhaseAssignment ? 'working' : 'available';
+    let assignmentLabel = hasAnyPhaseAssignment ? 'Working' : 'Available';
+    
     if (status === 'burned_out') {
         assignmentClass = 'burned';
         assignmentLabel = 'Burned Out';
     } else if (status === 'stressed') {
         assignmentClass = 'stressed';
-        assignmentLabel = member.currentAssignment ? 'Stressed on project' : 'Stressed';
+        assignmentLabel = hasAnyPhaseAssignment ? 'Stressed on project' : 'Stressed';
     } else if (status === 'excellent') {
         assignmentClass = 'excellent';
         assignmentLabel = 'Thriving';
-        } else if (member.currentAssignment) {
-            const project = window.GameState.projects.find(p => p.id === member.currentAssignment);
-        if (project) {
-            assignmentLabel = `On ${project.name}`;
-        }
+    } else if (assignedToProject) {
+        assignmentLabel = `On ${assignedToProject.name}`;
     }
 
     return {
         member,
         status,
         mood,
-        assignment: member.currentAssignment,
-        isAvailable: !member.currentAssignment,
+        assignment: assignedToProject ? assignedToProject.id : null,
+        isAvailable: !hasAnyPhaseAssignment,
         assignmentClass,
         assignmentLabel
     };
 }
 
     function assignTeamMember(memberId, projectId) {
-        const member = window.GameState.team.find(m => m.id === memberId);
-    if (!member) return false;
-
-    if (projectId) {
         const project = window.GameState.projects.find(p => p.id === projectId);
+        const member = window.GameState.team.find(m => m.id === memberId);
         
-        if (!project) return false;
+        if (!project || !member) return false;
         
-        // For phase-based projects, assign to ALL phases (not just ones that can start)
-        if (project.phases) {
-            const phaseNames = ['management', 'design', 'development', 'review'];
-            phaseNames.forEach(phaseName => {
-                const phase = project.phases[phaseName];
-                if (phase) {
-                    if (!phase.teamAssigned) {
-                        phase.teamAssigned = [];
-                    }
-                    if (!phase.teamAssigned.includes(memberId)) {
-                        phase.teamAssigned.push(memberId);
-                    }
-                }
-            });
-        }
-        
-        // Allow multiple project assignments (workers can be on multiple projects)
-        // Track assignments in project.teamAssigned array
+        // Add to project team
         if (!project.teamAssigned || !Array.isArray(project.teamAssigned)) {
             project.teamAssigned = [];
         }
@@ -1352,24 +1279,24 @@ const ProjectsModule = (function() {
             project.teamAssigned.push(memberId);
         }
         
-        // Set currentAssignment to the first/latest project (for backward compatibility)
-        // But allow workers to be on multiple projects via project.teamAssigned
-        if (!member.currentAssignment || member.id === 'player') {
-            member.currentAssignment = projectId;
+        // Add to member's project list
+        if (!member.assignedProjects) {
+            member.assignedProjects = [];
         }
+        if (!member.assignedProjects.includes(projectId)) {
+            member.assignedProjects.push(projectId);
+        }
+        
         if (member.daysOnAssignment === undefined) {
             member.daysOnAssignment = 0;
         }
-    } else {
-        // projectId is null/undefined - clear current assignment
-        // Note: This doesn't remove from project.teamAssigned arrays to allow multiple assignments
-        // To remove from a specific project, use removeTeamMemberFromProject
-        if (member.currentAssignment) {
-            member.currentAssignment = null;
-            member.daysOnAssignment = 0;
+        
+        // Recalculate hour splits (based on number of projects, not phases)
+        if (window.recalculateHourSplits) {
+            window.recalculateHourSplits();
         }
-    }
-
+        
+        console.log(`Assigned ${member.name} to ${project.name}`);
         window.displayGameState();
         window.highlightTeamMemberCard(memberId);
         window.saveState();
@@ -1377,11 +1304,18 @@ const ProjectsModule = (function() {
     }
 
     function getAvailableTeamMembers() {
-        return window.GameState.team.filter(m => !m.currentAssignment || m.id === 'player');
+        return window.GameState.team.filter(m => {
+            if (m.id === 'player') return true;
+            const assignedCount = (m.assignedProjects && m.assignedProjects.length) || 0;
+            return assignedCount === 0;
+        });
     }
 
     function autoAssignAvailableWorkers() {
+        console.log('[Auto-Assign] Starting auto-assignment...');
         const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
+        console.log(`[Auto-Assign] Found ${activeProjects.length} active projects`);
+        
         if (activeProjects.length === 0) {
             window.showWarningToast('No active projects to assign workers to', 2000);
             return { assigned: 0, message: 'No active projects' };
@@ -1393,175 +1327,230 @@ const ProjectsModule = (function() {
                 const playerBurnout = m.burnout || 0;
                 return playerBurnout < 80;
             }
-            return !m.currentAssignment;
+            
+            // Check if worker is already assigned to any active phase
+            let hasActivePhaseAssignment = false;
+            window.GameState.projects.forEach(proj => {
+                if (!proj.phases) return;
+                ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                    const phase = proj.phases[phaseName];
+                    if (phase && phase.teamAssigned && phase.teamAssigned.includes(m.id)) {
+                        const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(proj, phaseName) : phase.status;
+                        if (phaseStatus === 'active' || phaseStatus === 'ready') {
+                            hasActivePhaseAssignment = true;
+                        }
+                    }
+                });
+            });
+            
+            return !hasActivePhaseAssignment;
         });
 
+        console.log(`[Auto-Assign] Found ${availableMembers.length} available workers:`, availableMembers.map(m => m.name));
+        
         if (availableMembers.length === 0) {
-            window.showWarningToast('No available workers to assign', 2000);
+            window.showWarningToast('⚠️ No available workers to assign (all team members are already on active phases)', 2000);
             return { assigned: 0, message: 'No available workers' };
         }
 
-        const targetWorkersPerProject = Math.ceil(availableMembers.length / activeProjects.length);
+        // SKILL-AWARE ASSIGNMENT ALGORITHM
+        // 1. Calculate urgency score for each project
+        const projectsWithScores = activeProjects.map(project => {
+            let urgencyScore = 0;
+            
+            // Crisis projects get highest priority
+            if (project.status === 'crisis') urgencyScore += 1000;
+            
+            // Projects with no workers on active phase
+            let activePhaseHasWorkers = false;
+            if (project.phases) {
+                ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                    const phase = project.phases[phaseName];
+                    if (phase) {
+                        const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(project, phaseName) : phase.status;
+                        if ((phaseStatus === 'active' || phaseStatus === 'ready') && 
+                            phase.teamAssigned && phase.teamAssigned.length > 0) {
+                            activePhaseHasWorkers = true;
+                        }
+                    }
+                });
+            }
+            if (!activePhaseHasWorkers) urgencyScore += 500;
+            
+            // Approaching deadline (< 2 weeks)
+            if (project.weeksRemaining < 2) urgencyScore += 200;
+            
+            // Low progress relative to time remaining
+            const progressRatio = project.progress / (1 - (project.weeksRemaining / project.totalWeeks));
+            if (progressRatio < 0.5) urgencyScore += 100;
+            
+            // Determine active phase
+            let activePhase = 'management'; // default
+            if (project.phases) {
+                if (project.phases.review.status === 'active' || project.phases.review.status === 'ready') {
+                    activePhase = 'review';
+                } else if (project.phases.development.status === 'active' || project.phases.development.status === 'ready') {
+                    activePhase = 'development';
+                } else if (project.phases.design.status === 'active' || project.phases.design.status === 'ready') {
+                    activePhase = 'design';
+                }
+            }
+            
+            return {
+                project,
+                urgencyScore,
+                activePhase
+            };
+        });
+        
+        // 2. Sort by urgency (highest first)
+        projectsWithScores.sort((a, b) => b.urgencyScore - a.urgencyScore);
+        
+        // 3. Greedy assignment: best worker for each project's active phase
         const assignedWorkers = new Set();
         const assignedDetails = [];
+        const remainingWorkers = [...availableMembers];
         
-        let memberIndex = 0;
-        let rounds = 0;
-        const maxRounds = targetWorkersPerProject * 2;
+        // First pass: assign best-fit worker to each project
+        for (const { project, activePhase } of projectsWithScores) {
+            if (remainingWorkers.length === 0) break;
+            
+            // Calculate efficiency score for each available worker for this phase
+            const workerScores = remainingWorkers.map(member => {
+                const efficiency = getEfficiencyForPhase(member, activePhase);
+                const skill = (member.skill || 1) / 5;
+                const morale = (member.morale?.current || 50) / 100;
+                
+                // Prefer workers who match the phase role
+                let roleBonus = 0;
+                const role = (member.role || '').toLowerCase();
+                if ((role === 'manager' && (activePhase === 'management' || activePhase === 'review')) ||
+                    (role === 'designer' && activePhase === 'design') ||
+                    (role === 'developer' && activePhase === 'development')) {
+                    roleBonus = 0.5;
+                }
+                
+                const score = efficiency * skill * morale + roleBonus;
+                return { member, score };
+            });
+            
+            // Sort by score (highest first)
+            workerScores.sort((a, b) => b.score - a.score);
+            
+            // Assign the best worker to the ACTIVE PHASE
+            const bestWorker = workerScores[0].member;
+            const phase = project.phases[activePhase];
+            
+            if (phase) {
+                // Initialize teamAssigned if needed
+                if (!phase.teamAssigned) {
+                    phase.teamAssigned = [];
+                }
+                
+                // Add worker to phase if not already assigned
+                if (!phase.teamAssigned.includes(bestWorker.id)) {
+                    phase.teamAssigned.push(bestWorker.id);
+                    assignedWorkers.add(bestWorker.id);
+                    assignedDetails.push(`${bestWorker.name} → ${project.name} (${activePhase})`);
+                    console.log(`[Auto-Assign] Assigned ${bestWorker.name} to ${project.name} ${activePhase} phase`);
+                    
+                    // Remove from available pool
+                    const index = remainingWorkers.findIndex(m => m.id === bestWorker.id);
+                    if (index !== -1) remainingWorkers.splice(index, 1);
+                }
+            }
+        }
         
-        while (rounds < maxRounds) {
-            let anyAssignmentThisRound = false;
+        // 4. Second pass: distribute remaining workers to projects that need help
+        if (remainingWorkers.length > 0) {
+            // Re-sort projects by those who need more help (low progress + tight deadline)
+            const needHelpScores = projectsWithScores.map(({ project, activePhase }) => {
+                // Count workers on the active phase
+                let activePhaseWorkerCount = 0;
+                const phase = project.phases[activePhase];
+                if (phase && phase.teamAssigned) {
+                    activePhaseWorkerCount = phase.teamAssigned.length;
+                }
+                
+                const helpScore = (1 - project.progress) * 100 + 
+                                (project.weeksRemaining < 3 ? 50 : 0) +
+                                (activePhaseWorkerCount < 2 ? 30 : 0);
+                return { project, activePhase, helpScore };
+            });
             
-            for (const project of activeProjects) {
-                const currentAssigned = project.teamAssigned || [];
-                const needed = Math.max(0, targetWorkersPerProject - currentAssigned.length);
+            needHelpScores.sort((a, b) => b.helpScore - a.helpScore);
+            
+            for (const { project, activePhase } of needHelpScores) {
+                if (remainingWorkers.length === 0) break;
                 
-                if (needed === 0) continue;
+                const phase = project.phases[activePhase];
+                if (!phase) continue;
                 
-                const member = availableMembers[memberIndex % availableMembers.length];
-                
-                if (currentAssigned.includes(member.id)) {
-                    memberIndex++;
-                    continue;
+                // Initialize teamAssigned if needed
+                if (!phase.teamAssigned) {
+                    phase.teamAssigned = [];
                 }
                 
-                const playerBurnout = member.id === 'player' ? (member.burnout || 0) : 0;
-                if (member.id === 'player' && playerBurnout >= 80) {
-                    memberIndex++;
-                    continue;
+                // Just take the next available worker (they're all extras at this point)
+                const worker = remainingWorkers[0];
+                if (!phase.teamAssigned.includes(worker.id)) {
+                    phase.teamAssigned.push(worker.id);
+                    assignedWorkers.add(worker.id);
+                    assignedDetails.push(`${worker.name} → ${project.name} (${activePhase} backup)`);
+                    console.log(`[Auto-Assign] Assigned ${worker.name} to ${project.name} ${activePhase} phase (backup)`);
+                    remainingWorkers.shift();
                 }
-                
-                if (assignTeamMember(member.id, project.id)) {
-                    assignedWorkers.add(member.id);
-                    assignedDetails.push(`${member.name} → ${project.name}`);
-                    anyAssignmentThisRound = true;
-                }
-                
-                memberIndex++;
             }
-            
-            if (!anyAssignmentThisRound) {
-                break;
-            }
-            
-            rounds++;
         }
 
         const uniqueWorkersAssigned = assignedWorkers.size;
+        console.log(`[Auto-Assign] Completed. Total workers assigned: ${uniqueWorkersAssigned}`);
+        console.log('[Auto-Assign] Assignment details:', assignedDetails);
 
         if (uniqueWorkersAssigned > 0) {
-            window.showSuccessToast(`Auto-assigned ${uniqueWorkersAssigned} worker(s) to projects`, 3000);
+            // Show detailed feedback
+            const detailMessage = assignedDetails.length <= 3 
+                ? `\n${assignedDetails.join('\n')}`
+                : '';
+            window.showSuccessToast(`✅ Smart-assigned ${uniqueWorkersAssigned} worker(s) to active phases!${detailMessage}`, 3000);
             window.displayGameState();
+            window.saveState(); // Persist the changes
         } else {
-            window.showWarningToast('All projects already have workers assigned', 2000);
+            console.log('[Auto-Assign] No workers were assigned');
+            window.showWarningToast('⚠️ No workers assigned - either all workers are busy or all active phases already have team members', 2000);
         }
 
         return { assigned: uniqueWorkersAssigned, details: assignedDetails };
     }
 
-    function assignTeamMemberToPhase(memberId, projectId, phaseName) {
-        const project = window.GameState.projects.find(p => p.id === projectId);
-        if (!project || !project.phases || !project.phases[phaseName]) return false;
-        
-        const phase = project.phases[phaseName];
-        if (!phase.teamAssigned) {
-            phase.teamAssigned = [];
-        }
-        
-        if (!phase.teamAssigned.includes(memberId)) {
-            phase.teamAssigned.push(memberId);
-        }
-        
-        // Also add to legacy teamAssigned for backward compatibility
-        if (!project.teamAssigned || !Array.isArray(project.teamAssigned)) {
-            project.teamAssigned = [];
-        }
-        if (!project.teamAssigned.includes(memberId)) {
-            project.teamAssigned.push(memberId);
-        }
-        
-        // Set currentAssignment if not already set to another project (or if player)
-        const member = window.GameState.team.find(m => m.id === memberId);
-        if (member) {
-            if (!member.currentAssignment || member.id === 'player') {
-                member.currentAssignment = projectId;
-            }
-        }
-        
-        return true;
-    }
-
-    function assignTeamMemberToAllPhases(memberId, projectId) {
-        const project = window.GameState.projects.find(p => p.id === projectId);
-        if (!project || !project.phases) return false;
-        
-        const phaseNames = ['management', 'design', 'development', 'review'];
-        let assigned = false;
-        
-        phaseNames.forEach(phaseName => {
-            if (assignTeamMemberToPhase(memberId, projectId, phaseName)) {
-                assigned = true;
-            }
-        });
-        
-        return assigned;
-    }
-
-    function removeTeamMemberFromPhase(memberId, projectId, phaseName) {
-        const project = window.GameState.projects.find(p => p.id === projectId);
-        if (!project || !project.phases || !project.phases[phaseName]) return false;
-        
-        const phase = project.phases[phaseName];
-        if (phase.teamAssigned) {
-            phase.teamAssigned = phase.teamAssigned.filter(id => id !== memberId);
-        }
-        
-        // If worker is removed from a phase, also remove from project
-        // This maintains sync: project assignment = all phases assignment
-        if (project.teamAssigned && project.teamAssigned.includes(memberId)) {
-            removeTeamMemberFromProject(memberId, projectId);
-        }
-        
-        return true;
-    }
 
     function removeTeamMemberFromProject(memberId, projectId) {
         const project = window.GameState.projects.find(p => p.id === projectId);
-        if (!project) return false;
+        const member = window.GameState.team.find(m => m.id === memberId);
         
-        // Remove from project.teamAssigned
+        if (!project || !member) return false;
+        
+        // Remove from project team
         if (project.teamAssigned && Array.isArray(project.teamAssigned)) {
             project.teamAssigned = project.teamAssigned.filter(id => id !== memberId);
         }
         
-        // Remove from all phases of this project
-        if (project.phases) {
-            const phaseNames = ['management', 'design', 'development', 'review'];
-            phaseNames.forEach(phaseName => {
-                const phase = project.phases[phaseName];
-                if (phase && phase.teamAssigned) {
-                    phase.teamAssigned = phase.teamAssigned.filter(id => id !== memberId);
-                }
-            });
+        // Remove from member's project list
+        if (member.assignedProjects && Array.isArray(member.assignedProjects)) {
+            member.assignedProjects = member.assignedProjects.filter(id => id !== projectId);
         }
         
-        // Clear currentAssignment if it was this project
-        const member = window.GameState.team.find(m => m.id === memberId);
-        if (member && member.currentAssignment === projectId) {
-            // Set to another project if worker is on multiple projects
-            const otherProjects = window.GameState.projects.filter(p => 
-                p.id !== projectId && 
-                p.teamAssigned && 
-                p.teamAssigned.includes(memberId)
-            );
-            if (otherProjects.length > 0) {
-                member.currentAssignment = otherProjects[0].id;
-            } else {
-                member.currentAssignment = null;
-                member.daysOnAssignment = 0;
-            }
+        // Reset daysOnAssignment if no projects left
+        if (member.assignedProjects && member.assignedProjects.length === 0) {
+            member.daysOnAssignment = 0;
         }
         
+        // Recalculate hour splits
+        if (window.recalculateHourSplits) {
+            window.recalculateHourSplits();
+        }
+        
+        console.log(`Removed ${member.name} from ${project.name}`);
         return true;
     }
 
@@ -1612,7 +1601,11 @@ const ProjectsModule = (function() {
 
         const oldBurnout = player.burnout || 0;
         const burnoutReduction = Math.min(25, oldBurnout);
-        player.burnout = Math.max(0, oldBurnout - burnoutReduction);
+        
+        // Use centralized burnout adjustment
+        if (window.adjustBurnout && burnoutReduction > 0) {
+            window.adjustBurnout(player.id, -burnoutReduction, 'Called in sick');
+        }
 
         player.hours = Math.max(0, (player.hours || 40) - 8);
 
@@ -1652,6 +1645,20 @@ const ProjectsModule = (function() {
         window.showSuccessToast(`Called in sick. Burnout reduced by ${Math.round(burnoutReduction)}%. ${deferredCount > 0 ? `${deferredCount} conversation(s) will be waiting tomorrow.` : ''}`, 4000);
     }
 
+    function recalculateHourSplits() {
+        window.GameState.team.forEach(member => {
+            const count = (member.assignedProjects && member.assignedProjects.length) || 0;
+            
+            if (count === 0) {
+                member.hourSplitRatio = 1.0;
+                member.hoursPerProject = member.hours || 40;
+            } else {
+                member.hourSplitRatio = 1 / count;
+                member.hoursPerProject = (member.hours || 40) * member.hourSplitRatio;
+            }
+        });
+    }
+
     return {
         checkForIllness,
         showIllnessPopup,
@@ -1681,50 +1688,56 @@ const ProjectsModule = (function() {
         canStartPhase,
         getPhaseStatus,
         updatePhaseProgress,
-        assignTeamMemberToPhase,
-        assignTeamMemberToAllPhases,
-        removeTeamMemberFromPhase,
         removeTeamMemberFromProject,
         hireFreelancer,
         triggerPhaseCompletion,
-        triggerPhaseActivation
+        triggerPhaseActivation,
+        recalculateHourSplits
     };
 })();
 
 // Expose on window for backward compatibility
-window.checkForIllness = ProjectsModule.checkForIllness;
-window.showIllnessPopup = ProjectsModule.showIllnessPopup;
-window.updatePlayerBurnout = ProjectsModule.updatePlayerBurnout;
-window.updateTeamMorale = ProjectsModule.updateTeamMorale;
-window.callInSick = ProjectsModule.callInSick;
-window.getClientProfile = ProjectsModule.getClientProfile;
-window.updateProjectRisk = ProjectsModule.updateProjectRisk;
-window.calculateSatisfactionScores = ProjectsModule.calculateSatisfactionScores;
-window.updateProjectSatisfaction = ProjectsModule.updateProjectSatisfaction;
-window.handleScopeCreepRequest = ProjectsModule.handleScopeCreepRequest;
-window.generateWeeklyClientFeedback = ProjectsModule.generateWeeklyClientFeedback;
-window.cloneClientProfile = ProjectsModule.cloneClientProfile;
-window.buildProjectFromTemplate = ProjectsModule.buildProjectFromTemplate;
-window.hydrateProject = ProjectsModule.hydrateProject;
-window.updateProjects = ProjectsModule.updateProjects;
-window.checkProjectDeadlines = ProjectsModule.checkProjectDeadlines;
-window.getProjectStatus = ProjectsModule.getProjectStatus;
-window.completeProject = ProjectsModule.completeProject;
-window.getTeamMemberStatus = ProjectsModule.getTeamMemberStatus;
-window.assignTeamMember = ProjectsModule.assignTeamMember;
-window.getAvailableTeamMembers = ProjectsModule.getAvailableTeamMembers;
-window.autoAssignAvailableWorkers = ProjectsModule.autoAssignAvailableWorkers;
-window.calculatePhaseHours = ProjectsModule.calculatePhaseHours;
-window.createPhaseStructure = ProjectsModule.createPhaseStructure;
-window.getEfficiencyForPhase = ProjectsModule.getEfficiencyForPhase;
-window.canStartPhase = ProjectsModule.canStartPhase;
-window.getPhaseStatus = ProjectsModule.getPhaseStatus;
-window.updatePhaseProgress = ProjectsModule.updatePhaseProgress;
-window.assignTeamMemberToPhase = ProjectsModule.assignTeamMemberToPhase;
-window.removeTeamMemberFromPhase = ProjectsModule.removeTeamMemberFromPhase;
-window.removeTeamMemberFromProject = ProjectsModule.removeTeamMemberFromProject;
-window.hireFreelancer = ProjectsModule.hireFreelancer;
-window.triggerPhaseCompletion = ProjectsModule.triggerPhaseCompletion;
-window.triggerPhaseActivation = ProjectsModule.triggerPhaseActivation;
-window.assignTeamMemberToAllPhases = ProjectsModule.assignTeamMemberToAllPhases;
+try {
+    if (typeof ProjectsModule === 'object' && ProjectsModule !== null) {
+        window.checkForIllness = ProjectsModule.checkForIllness;
+        window.showIllnessPopup = ProjectsModule.showIllnessPopup;
+        window.updatePlayerBurnout = ProjectsModule.updatePlayerBurnout;
+        window.updateTeamMorale = ProjectsModule.updateTeamMorale;
+        window.callInSick = ProjectsModule.callInSick;
+        window.getClientProfile = ProjectsModule.getClientProfile;
+        window.updateProjectRisk = ProjectsModule.updateProjectRisk;
+        window.calculateSatisfactionScores = ProjectsModule.calculateSatisfactionScores;
+        window.updateProjectSatisfaction = ProjectsModule.updateProjectSatisfaction;
+        window.handleScopeCreepRequest = ProjectsModule.handleScopeCreepRequest;
+        window.generateWeeklyClientFeedback = ProjectsModule.generateWeeklyClientFeedback;
+        window.cloneClientProfile = ProjectsModule.cloneClientProfile;
+        window.buildProjectFromTemplate = ProjectsModule.buildProjectFromTemplate;
+        window.hydrateProject = ProjectsModule.hydrateProject;
+        window.updateProjects = ProjectsModule.updateProjects;
+        window.checkProjectDeadlines = ProjectsModule.checkProjectDeadlines;
+        window.getProjectStatus = ProjectsModule.getProjectStatus;
+        window.completeProject = ProjectsModule.completeProject;
+        window.getTeamMemberStatus = ProjectsModule.getTeamMemberStatus;
+        window.assignTeamMember = ProjectsModule.assignTeamMember;
+        window.getAvailableTeamMembers = ProjectsModule.getAvailableTeamMembers;
+        window.autoAssignAvailableWorkers = ProjectsModule.autoAssignAvailableWorkers;
+        window.calculatePhaseHours = ProjectsModule.calculatePhaseHours;
+        window.createPhaseStructure = ProjectsModule.createPhaseStructure;
+        window.getEfficiencyForPhase = ProjectsModule.getEfficiencyForPhase;
+        window.canStartPhase = ProjectsModule.canStartPhase;
+        window.getPhaseStatus = ProjectsModule.getPhaseStatus;
+        window.updatePhaseProgress = ProjectsModule.updatePhaseProgress;
+        window.removeTeamMemberFromProject = ProjectsModule.removeTeamMemberFromProject;
+        window.hireFreelancer = ProjectsModule.hireFreelancer;
+        window.triggerPhaseCompletion = ProjectsModule.triggerPhaseCompletion;
+        window.triggerPhaseActivation = ProjectsModule.triggerPhaseActivation;
+        window.recalculateHourSplits = ProjectsModule.recalculateHourSplits;
+        
+        console.log('ProjectsModule functions exposed to window');
+    } else {
+        console.error('ProjectsModule failed to initialize. Type:', typeof ProjectsModule);
+    }
+} catch (error) {
+    console.error('Error exposing ProjectsModule functions:', error);
+}
 

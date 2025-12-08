@@ -49,6 +49,69 @@
     --font-weight-bold: 700;
 }
 
+/* ============================================
+   DAY PROGRESSION BAR
+   ============================================ */
+.day-progress-container {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 24px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.day-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, 
+        hsl(var(--primary)) 0%, 
+        hsl(142.1 76.2% 46.3%) 33%,
+        hsl(var(--warning)) 66%,
+        hsl(var(--error)) 100%);
+    transition: width 0.5s ease-out;
+    border-radius: var(--radius);
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.4);
+}
+
+.day-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 3px;
+    height: 100%;
+    background: hsl(var(--foreground));
+    box-shadow: 0 0 10px hsl(var(--foreground) / 0.9);
+    transition: opacity 0.3s;
+}
+
+/* Pulse animation when day is ending */
+.day-progress-bar.ending {
+    animation: progress-pulse 0.8s ease-in-out infinite;
+    background: linear-gradient(90deg, 
+        hsl(var(--error)) 0%, 
+        hsl(var(--warning)) 50%,
+        hsl(var(--error)) 100%);
+}
+
+@keyframes progress-pulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.85;
+        transform: scale(1.01);
+    }
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -117,19 +180,19 @@ body {
 }
 
 .header-menu-dropdown {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    right: 0;
+    position: fixed;
+    top: auto;
+    right: 1.5rem;
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) - 2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    z-index: 1002;
     min-width: 200px;
     padding: 0.5rem;
-    display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    margin-top: 3rem;
 }
 
 .menu-item-btn {
@@ -160,6 +223,41 @@ body {
 
 .menu-item-btn.menu-item-danger:hover {
     background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Header Buttons Group */
+.header-buttons-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    position: relative;
+    z-index: 1001;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background-color: hsl(var(--secondary));
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 2px);
+    color: hsl(var(--foreground));
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    font-family: inherit;
+}
+
+.btn-icon:hover {
+    background-color: hsl(var(--accent));
+    transform: scale(1.05);
+}
+
+.btn-icon:active {
+    transform: scale(0.98);
 }
 
 /* Week Counter - Status Display */
@@ -193,24 +291,40 @@ body {
 /* Clock Display - Informational Panel (not a button) */
 .clock-display {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 0.75rem;
     padding: 0.875rem 1.25rem;
     background: hsl(var(--muted));
     border: 1px solid hsl(var(--border));
     border-radius: calc(var(--radius) - 2px);
-    align-self: center;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    min-width: fit-content;
+    width: 100%;
     /* Subtle glow to indicate time is running */
     box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1), 
                 0 2px 4px hsl(var(--background) / 0.1);
     transition: box-shadow 0.2s ease;
 }
 
+.clock-display > .clock-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Ensure clock elements don't shrink in horizontal layout */
+.clock-icon,
+.clock-time,
+.pause-button,
+.pause-indicator,
+.hours-remaining,
+.clock-pause-indicator {
+    flex-shrink: 0;
+}
+
 .clock-icon {
     font-size: var(--font-size-xl);
-    animation: subtle-pulse 2s ease-in-out infinite;
     opacity: 0.9;
 }
 
@@ -235,12 +349,10 @@ body {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     color: hsl(var(--muted-foreground));
-    margin-left: 0.5rem;
     padding: 0.25rem 0.5rem;
     background: hsl(var(--muted) / 0.5);
     border-radius: calc(var(--radius) - 4px);
     border: 1px solid hsl(var(--border));
-    animation: subtle-pulse 2s ease-in-out infinite;
     white-space: nowrap;
 }
 
@@ -464,6 +576,80 @@ h3 {
     color: hsl(var(--foreground));
 }
 
+/* Pause/Play Button */
+.pause-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+
+.pause-button:hover {
+    background: hsl(var(--accent));
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pause-button:active {
+    transform: scale(0.95);
+}
+
+.pause-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Icon visibility */
+.pause-button .pause-icon,
+.pause-button .play-icon {
+    transition: opacity 0.2s ease;
+}
+
+.pause-button.paused .pause-icon {
+    display: none;
+}
+
+.pause-button.paused .play-icon {
+    display: inline !important;
+}
+
+/* Game paused state */
+body.game-paused .game-container {
+    opacity: 0.8;
+}
+
+body.game-paused .pause-button {
+    pointer-events: auto; /* Always allow pause button clicks */
+}
+
+/* Paused indicator in header */
+.pause-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
+    padding: 4px 12px;
+    background: hsl(var(--warning));
+    color: hsl(var(--background));
+    border-radius: 12px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+body.game-paused .pause-indicator {
+    opacity: 1;
+}
+
 /* ============================================
    CARDS - shadcn inspired
    ============================================ */
@@ -472,10 +658,11 @@ h3 {
 .team-member-card {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
+    border-left: 4px solid hsl(var(--muted)); /* Default neutral */
     border-radius: calc(var(--radius) + 2px);
     padding: 1rem;
     position: relative;
-    transition: all 0.2s ease;
+    transition: all 0.2s ease, border-left-color 0.2s ease;
     /* Enhanced shadow for dark mode */
     box-shadow: 0 1px 3px hsl(var(--foreground) / 0.05),
                 0 1px 2px hsl(var(--foreground) / 0.1);
@@ -505,6 +692,94 @@ h3 {
     50% {
         border-color: hsl(var(--warning) / 0.8);
         box-shadow: 0 0 0 4px hsl(var(--warning) / 0.2);
+    }
+}
+
+/* ============================================
+   HOURS INDICATOR BAR
+   ============================================ */
+.hours-indicator {
+    position: relative;
+    width: 120px;
+    height: 10px;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.hours-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+/* Color states based on hours remaining */
+.hours-bar.hours-full {
+    background: hsl(var(--success));
+}
+
+.hours-bar.hours-good {
+    background: hsl(var(--warning));
+}
+
+.hours-bar.hours-low {
+    background: hsl(38 92% 50%); /* Orange */
+}
+
+.hours-bar.hours-critical {
+    background: hsl(var(--error));
+}
+
+.hours-bar.hours-debt {
+    background: hsl(var(--error));
+    animation: hours-pulse 1s ease-in-out infinite;
+}
+
+/* Text label */
+.hours-label {
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.6rem;
+    font-weight: var(--font-weight-semibold);
+    color: hsl(var(--primary-foreground));
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1px 6px;
+    border-radius: 4px;
+    z-index: 2;
+    pointer-events: none;
+    letter-spacing: 0.3px;
+}
+
+/* Special states */
+.hours-indicator.member-quit .hours-bar {
+    background: hsl(var(--muted));
+    opacity: 0.3;
+}
+
+.hours-indicator.member-ill {
+    opacity: 0.5;
+}
+
+/* Pulse animation for debt */
+@keyframes hours-pulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scaleY(1);
+    }
+    50% { 
+        opacity: 0.7;
+        transform: scaleY(0.95);
     }
 }
 
@@ -891,9 +1166,104 @@ h3 {
 
 /* Phase Assignment Modal */
 .phase-assignment-modal {
-    max-width: 800px;
+    max-width: 700px;
     max-height: 90vh;
     overflow-y: auto;
+}
+
+.phase-assignment-modal-wide {
+    max-width: 1000px;
+}
+
+/* Phase Assignment Grid (4 columns) */
+.phases-assignment-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.phase-assignment-column {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1rem;
+    background: hsl(var(--card));
+    display: flex;
+    flex-direction: column;
+}
+
+.phase-column-header {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.phase-column-header h3 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem 0;
+    font-weight: var(--font-weight-semibold);
+}
+
+.phase-progress-bar-mini {
+    height: 4px;
+    background: hsl(var(--muted));
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.team-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.team-member-checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.team-member-checkbox-option:hover {
+    background: hsl(var(--muted) / 0.5);
+}
+
+.team-member-checkbox-option.assigned {
+    background: hsl(var(--primary) / 0.1);
+}
+
+.team-member-checkbox-option input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.member-name-short {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-medium);
+}
+
+.efficiency-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.efficiency-dot.efficiency-high {
+    background: hsl(142.1 76.2% 46.3%);
+}
+
+.efficiency-dot.efficiency-medium {
+    background: hsl(48 100% 50%);
+}
+
+.efficiency-dot.efficiency-low {
+    background: hsl(0 84.2% 60.2%);
 }
 
 .phases-assignment-container {
@@ -901,6 +1271,67 @@ h3 {
     flex-direction: column;
     gap: 1.5rem;
     margin: 1.5rem 0;
+}
+
+/* Phase Status Grid */
+.phases-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.phase-status-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+}
+
+.phase-status-card .phase-icon {
+    font-size: 1.5rem;
+}
+
+.phase-status-card .phase-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.phase-status-card .phase-name {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-medium);
+}
+
+.phase-progress-mini {
+    height: 3px;
+    background: hsl(var(--muted));
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.25rem;
+}
+
+.phase-progress-fill-mini {
+    height: 100%;
+    background: hsl(var(--primary));
+    transition: width 0.3s ease;
+}
+
+/* Simplified Team Assignment List */
+.team-assignment-simple {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    background: hsl(var(--muted) / 0.3);
 }
 
 .phase-assignment-section {
@@ -1306,12 +1737,36 @@ h3 {
     gap: 0.75rem;
 }
 
-.team-member-card.burned_out {
-    border-left: 4px solid hsl(var(--destructive));
+/* Team member status border colors - always visible */
+.team-member-card.available {
+    border-left-color: hsl(var(--success));
+}
+
+.team-member-card.excellent {
+    border-left-color: hsl(var(--success));
+}
+
+.team-member-card.working {
+    border-left-color: hsl(var(--primary));
 }
 
 .team-member-card.stressed {
-    border-left: 4px solid hsl(var(--warning));
+    border-left-color: hsl(var(--warning));
+}
+
+.team-member-card.burned_out,
+.team-member-card.burned {
+    border-left-color: hsl(var(--destructive));
+}
+
+.team-member-card.ill {
+    border-left-color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+}
+
+.team-member-card.quit {
+    border-left-color: hsl(var(--destructive));
+    opacity: 0.5;
 }
 
 /* ============================================
@@ -1362,10 +1817,6 @@ h3 {
     }
 }
 
-.team-member-card.excellent {
-    border-left: 4px solid hsl(var(--success));
-}
-
 .team-member-header {
     display: flex;
     align-items: center;
@@ -1376,10 +1827,10 @@ h3 {
 .team-member-card-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.875rem;
     cursor: pointer;
-    padding: 0.5rem;
-    margin: -0.5rem;
+    padding: 1rem;
+    margin: -1rem;
     border-radius: calc(var(--radius) - 2px);
     transition: background-color 0.2s ease;
 }
@@ -1393,10 +1844,10 @@ h3 {
 }
 
 .team-member-expand-icon {
-    margin-left: auto;
     font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     transition: transform 0.2s ease;
+    flex-shrink: 0;
 }
 
 .team-member-header-horizontal {
@@ -1433,8 +1884,8 @@ h3 {
 }
 
 .team-member-avatar {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background-color: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
@@ -1442,7 +1893,8 @@ h3 {
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    flex-shrink: 0;
 }
 
 .team-member-info {
@@ -1451,14 +1903,15 @@ h3 {
 
 .team-member-name {
     font-weight: var(--font-weight-semibold);
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-base);
     color: hsl(var(--foreground));
-    line-height: 1.3;
+    line-height: 1.2;
 }
 
 .team-member-role {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: hsl(var(--muted-foreground));
+    font-weight: var(--font-weight-normal);
 }
 
 .team-member-status {
@@ -2053,8 +2506,9 @@ h3 {
 }
 
 .choice-btn:disabled {
+    opacity: 0.5 !important;
     cursor: not-allowed !important;
-    pointer-events: none;
+    pointer-events: none !important;
 }
 
 .choice-btn.sent-choice {

@@ -56,21 +56,26 @@
                             <span id="playerHours" class="resource-value">8/8</span>
                         </div>
                     </div>
-                    <button id="settingsBtn" class="btn-icon" title="Settings">⚙️</button>
+                    <div class="header-buttons-group">
+                        <button id="headerMenuBtn" class="btn-icon" title="More actions">⋯</button>
+                        <button id="settingsBtn" class="btn-icon" title="Settings">⚙️</button>
+                    </div>
+                    <div id="headerMenuDropdown" class="header-menu-dropdown" style="display: none;">
+                        <button id="callInSickBtn" class="menu-item-btn" title="Call in sick to recover (reduces burnout, but you'll lose hours and emails will pile up)">😷 Call in Sick</button>
+                        <button id="autoAssignBtn" class="menu-item-btn" title="Automatically assign available workers to projects">⚡ Auto-Assign</button>
+                        <button id="viewSummaryBtn" class="menu-item-btn">📊 View Summary</button>
+                        <button id="resetBtn" class="menu-item-btn menu-item-danger">🔄 Reset Game</button>
+                    </div>
                 </div>
                 <div class="header-controls">
                     <div class="clock-display">
                         <span class="clock-icon">🕐</span>
                         <span id="gameClock" class="clock-time">9:00 AM</span>
-                    </div>
-                    <div class="header-actions-menu">
-                        <button id="headerMenuBtn" class="btn btn-secondary" title="More actions">⋯</button>
-                        <div id="headerMenuDropdown" class="header-menu-dropdown" style="display: none;">
-                            <button id="callInSickBtn" class="menu-item-btn" title="Call in sick to recover (reduces burnout, but you'll lose hours and emails will pile up)">😷 Call in Sick</button>
-                            <button id="autoAssignBtn" class="menu-item-btn" title="Automatically assign available workers to projects">⚡ Auto-Assign</button>
-                            <button id="viewSummaryBtn" class="menu-item-btn">📊 View Summary</button>
-                            <button id="resetBtn" class="menu-item-btn menu-item-danger">🔄 Reset Game</button>
-                        </div>
+                        <button id="pauseBtn" class="btn-icon pause-button" title="Pause game (Space)">
+                            <span class="pause-icon">⏸️</span>
+                            <span class="play-icon" style="display: none;">▶️</span>
+                        </button>
+                        <span class="pause-indicator">⏸️ Paused</span>
                     </div>
                 </div>
             </div>
@@ -238,18 +243,18 @@
         </div>
     </div>
 
-    <script src="chaos-design-agency-game/utils.js"></script>
-    <script src="chaos-design-agency-game/constants.js"></script>
-    <script src="chaos-design-agency-game/dom-helpers.js"></script>
-    <script src="chaos-design-agency-game/logger.js"></script>
-    <script src="chaos-design-agency-game/state.js"></script>
-    <script src="chaos-design-agency-game/projects.js"></script>
-    <script src="chaos-design-agency-game/conversations.js"></script>
-    <script src="chaos-design-agency-game/tutorial.js"></script>
-    <script src="chaos-design-agency-game/animations.js"></script>
-    <script src="chaos-design-agency-game/office-visualization.js"></script>
-    <script src="chaos-design-agency-game/timer.js"></script>
-    <script src="chaos-design-agency-game/ui.js"></script>
-    <script src="chaos-design-agency-game/game.js"></script>
+    <script src="chaos-design-agency-game/utils.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/constants.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/dom-helpers.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/logger.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/state.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/projects.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/conversations.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/tutorial.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/animations.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/office-visualization.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/timer.js?v=20241205-1600"></script>
+    <script src="chaos-design-agency-game/ui.js?v=20241205-1700"></script>
+    <script src="chaos-design-agency-game/game.js?v=20241205-1600"></script>
 </body>
 </html>

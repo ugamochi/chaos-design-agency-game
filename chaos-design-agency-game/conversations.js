@@ -1,4 +1,6 @@
 // Conversation management logic
+// BURNOUT RULE: Never write to member.burnout directly!
+// ALWAYS use adjustBurnout() from state.js
 
 const ConversationsModule = (function() {
     'use strict';
@@ -194,25 +196,59 @@ const ConversationsModule = (function() {
     let isSubmitting = false;
 
     function submitConversationChoice() {
+        // STEP 1: LOCK IMMEDIATELY (FIRST LINE!)
         if (isSubmitting) {
-            console.warn('Already submitting conversation choice, ignoring duplicate call');
+            console.warn('Already submitting, ignoring click');
             return;
         }
-        
-        if (!currentConversation || !selectedChoiceId) {
-            return;
-        }
-
         isSubmitting = true;
+        
+        // STEP 2: DISABLE ALL BUTTONS IMMEDIATELY
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+        });
+        
         const sendBtn = document.querySelector('.send-response-btn');
         if (sendBtn) {
             sendBtn.disabled = true;
+        }
+        
+        // STEP 3: VISUAL FEEDBACK (early)
+        const conversationContainer = document.querySelector('.conversation-container');
+        if (conversationContainer) {
+            conversationContainer.classList.add('response-sent');
+        }
+        
+        // STEP 4: VALIDATION (after locking)
+        if (!currentConversation || !selectedChoiceId) {
+            isSubmitting = false;
+            // Re-enable buttons if validation fails
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.pointerEvents = '';
+            });
+            if (conversationContainer) {
+                conversationContainer.classList.remove('response-sent');
+            }
+            if (sendBtn) {
+                sendBtn.disabled = false;
+            }
+            return;
         }
 
         try {
             const choice = currentConversation.choices.find(c => c.id === selectedChoiceId);
             if (!choice) {
                 isSubmitting = false;
+                // Re-enable buttons if choice not found
+                document.querySelectorAll('.choice-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '';
+                    btn.style.pointerEvents = '';
+                });
                 if (sendBtn) {
                     sendBtn.disabled = false;
                 }
@@ -236,18 +272,18 @@ const ConversationsModule = (function() {
                     const isNowInOvertime = player.hours < 0;
                     if (isNowInOvertime) {
                         // Calculate burnout only for new overtime hours
-                        let burnoutIncrease = 0;
+                        let hoursInOvertime = 0;
                         if (!wasInOvertime) {
                             // Just entered overtime - calculate for hours that pushed into negative
-                            const hoursIntoOvertime = Math.abs(player.hours);
-                            burnoutIncrease = Math.floor(hoursIntoOvertime * 0.1);
+                            hoursInOvertime = Math.abs(player.hours);
                         } else {
                             // Already in overtime - calculate only for additional hours
-                            burnoutIncrease = Math.floor(hoursSpent * 0.1);
+                            hoursInOvertime = hoursSpent;
                         }
                         
-                        if (player.burnout !== undefined && burnoutIncrease > 0) {
-                            player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
+                        // Use centralized burnout calculation (5% per hour)
+                        if (window.calculateOvertimeBurnout && hoursInOvertime > 0) {
+                            window.calculateOvertimeBurnout(player.id, hoursInOvertime);
                         }
                     }
                 }
@@ -266,19 +302,14 @@ const ConversationsModule = (function() {
                 window.updateClock();
             }
 
-            // Update UI to show response is sent and locked
-            const conversationContainer = document.querySelector('.conversation-container');
+            // Update UI to show response is sent and locked (buttons already disabled early)
             if (conversationContainer) {
-                conversationContainer.classList.add('response-sent');
-                
-                // Disable all choice buttons
+                // Mark selected choice button
                 const choiceButtons = document.querySelectorAll('.choice-btn');
                 choiceButtons.forEach(btn => {
-                    btn.disabled = true;
-                    btn.style.cursor = 'not-allowed';
-                    btn.style.opacity = '0.6';
                     if (btn.dataset.choiceId === selectedChoiceId) {
                         btn.classList.add('sent-choice');
+                        btn.style.opacity = '0.6';
                     } else {
                         btn.style.opacity = '0.4';
                     }
@@ -324,6 +355,12 @@ const ConversationsModule = (function() {
         } catch (error) {
             console.error('Error submitting conversation choice:', error);
             isSubmitting = false;
+            // Re-enable buttons on error
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.pointerEvents = '';
+            });
             if (sendBtn) {
                 sendBtn.disabled = false;
             }
@@ -350,8 +387,8 @@ const ConversationsModule = (function() {
                 window.showWarningToast(`⚠️ Extreme burnout led to a costly error. Lost $${moneyLoss}`, 3000);
             } else {
                 const burnoutIncrease = Math.floor(Math.random() * 3) + 2;
-                if (player) {
-                    player.burnout = Math.min(100, (player.burnout || 0) + burnoutIncrease);
+                if (player && window.adjustBurnout) {
+                    window.adjustBurnout(player.id, burnoutIncrease, 'Extreme burnout penalty');
                 }
                 window.showWarningToast(`⚠️ Extreme burnout is making everything worse. Burnout +${burnoutIncrease}%`, 3000);
             }
@@ -371,12 +408,13 @@ const ConversationsModule = (function() {
 
         if (typeof consequences.playerBurnout === 'number') {
             const player = window.GameState.team.find(m => m.id === 'player');
-            if (player) {
-                const oldBurnout = player.burnout || 0;
-                player.burnout = Math.max(0, Math.min(100, (player.burnout || 0) + consequences.playerBurnout));
-                if (Math.abs(player.burnout - oldBurnout) > 0.1) {
-                    console.log(`Player burnout: ${Math.round(oldBurnout)}% -> ${Math.round(player.burnout)}%`);
-                }
+            if (player && window.adjustBurnout) {
+                const conversationSubject = conversation?.subject || conversation?.title || 'Unknown conversation';
+                window.adjustBurnout(
+                    player.id,
+                    consequences.playerBurnout,
+                    `Conversation: ${conversationSubject}`
+                );
             }
         }
 
@@ -646,21 +684,70 @@ const ConversationsModule = (function() {
         const eventMap = {
             low_morale: `team_low_morale_${member.id}`,
             high_morale: `team_high_morale_${member.id}`,
-            perfectionist_polish: 'tanue_extension_request',
-            pragmatic_scope: 'pasha_scope_suggestion',
-            eager_help: 'sasha_needs_help',
+            perfectionist_polish: `team_extension_request_${member.id}`,
+            pragmatic_scope: `team_scope_suggestion_${member.id}`,
+            eager_help: `team_needs_help_${member.id}`,
             eager_conflict: 'team_conflict',
-            eager_brilliant: 'sasha_brilliant_idea'
+            eager_brilliant: `team_brilliant_idea_${member.id}`
         };
 
-        const conversationId = eventMap[eventType];
+        const fallbackMap = {
+            perfectionist_polish: 'team_extension_request',
+            pragmatic_scope: 'team_scope_suggestion',
+            eager_help: 'team_needs_help',
+            eager_brilliant: 'team_brilliant_idea'
+        };
+
+        let conversationId = eventMap[eventType];
         if (!conversationId) {
             console.log(`Team event triggered without conversation: ${eventType}`);
             return;
         }
         
+        // Try dynamic ID first, fall back to generic template if not found
+        let foundConversation = window.AllConversations && window.AllConversations.find(c => c && c.id === conversationId);
+        if (!foundConversation) {
+            const fallbackId = fallbackMap[eventType];
+            if (fallbackId) {
+                // Try generic template first
+                foundConversation = window.AllConversations && window.AllConversations.find(c => c && c.id === fallbackId);
+                if (foundConversation) {
+                    conversationId = fallbackId;
+                } else {
+                    // Fall back to old hardcoded conversations for backward compatibility
+                    const legacyMap = {
+                        perfectionist_polish: 'tanue_extension_request',
+                        pragmatic_scope: 'pasha_scope_suggestion',
+                        eager_help: 'sasha_needs_help',
+                        eager_brilliant: 'sasha_brilliant_idea'
+                    };
+                    const legacyId = legacyMap[eventType];
+                    if (legacyId) {
+                        foundConversation = window.AllConversations && window.AllConversations.find(c => c && c.id === legacyId);
+                        if (foundConversation) {
+                            conversationId = legacyId;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!foundConversation) {
+            console.log(`No conversation found for event type: ${eventType}`);
+            return;
+        }
+        
         if (window.GameState.resolvedConversations.includes(conversationId)) {
             return;
+        }
+        
+        // Store member info in GameState for name replacement when conversation is displayed
+        // This ensures random team members' names replace hardcoded names in conversations
+        if (member && !window.GameState.conversationMemberMap) {
+            window.GameState.conversationMemberMap = {};
+        }
+        if (member) {
+            window.GameState.conversationMemberMap[conversationId] = member.id;
         }
         
         queueConversation(conversationId);
@@ -688,11 +775,31 @@ const ConversationsModule = (function() {
             }
         });
 
-        const tanue = window.getTeamMemberById('tanue_designer');
-        const sasha = window.getTeamMemberById('sasha_junior');
-        if (tanue && sasha && tanue.currentAssignment && tanue.currentAssignment === sasha.currentAssignment && Math.random() < 0.03) {
-            triggerTeamEvent(tanue, 'eager_conflict');
-        }
+        // Find all team members on the same project (dynamic conflict check)
+        const projectAssignments = {};
+        window.GameState.team.forEach(member => {
+            if (member.id === 'player') return;
+            
+            // Check both assignedProjects array and legacy currentAssignment for backward compatibility
+            const assignments = (member.assignedProjects && member.assignedProjects.length > 0) 
+                ? member.assignedProjects 
+                : (member.currentAssignment ? [member.currentAssignment] : []);
+            
+            assignments.forEach(projectId => {
+                if (!projectAssignments[projectId]) {
+                    projectAssignments[projectId] = [];
+                }
+                projectAssignments[projectId].push(member);
+            });
+        });
+
+        // Check for conflicts on projects with 2+ members
+        Object.entries(projectAssignments).forEach(([projectId, members]) => {
+            if (members.length >= 2 && Math.random() < 0.03) {
+                // Trigger conflict between first two members
+                triggerTeamEvent(members[0], 'eager_conflict');
+            }
+        });
     }
 
     function getAverageClientSatisfaction() {
@@ -832,18 +939,49 @@ const ConversationsModule = (function() {
                    window.AllTeamMembers.find(m => m.id === memberId);
         };
 
-        const tanue = getMemberById('tanue_designer');
-        const pasha = getMemberById('pasha_developer');
-        const sasha = getMemberById('sasha_junior');
+        // Handle {Worker} placeholder if conversation was triggered by a team member
+        const memberId = window.GameState.conversationMemberMap && window.GameState.conversationMemberMap[conversation.id];
+        if (memberId) {
+            const member = getMemberById(memberId);
+            if (member) {
+                replacements['{Worker}'] = member.name;
+                // Also replace common role-based placeholders
+                replacements['{WorkerRole}'] = member.role || member.title || '';
+            }
+        }
 
-        if (tanue) {
-            replacements['Tanue'] = tanue.name;
+        // If we have a member ID from conversationMemberMap, use that member for replacement
+        // This handles random teams - replace hardcoded names with actual team member names
+        if (memberId) {
+            const member = getMemberById(memberId);
+            if (member) {
+                // Replace hardcoded names that might appear in old conversations
+                replacements['Tanue'] = member.name;
+                replacements['Pasha'] = member.name;
+                replacements['Sasha'] = member.name;
+                // Replace "from" field patterns like "Tanue (Designer)" with actual member info
+                replacements['Tanue (Designer)'] = `${member.name} (${member.role || member.title || 'Team Member'})`;
+                replacements['Pasha (Developer)'] = `${member.name} (${member.role || member.title || 'Team Member'})`;
+                replacements['Sasha (Manager)'] = `${member.name} (${member.role || member.title || 'Team Member'})`;
+                replacements['Sasha (Junior)'] = `${member.name} (${member.role || member.title || 'Team Member'})`;
+            }
         }
-        if (pasha) {
-            replacements['Pasha'] = pasha.name;
-        }
-        if (sasha) {
-            replacements['Sasha'] = sasha.name;
+        
+        // Legacy hardcoded name replacements for backward compatibility (only if no memberId)
+        if (!memberId) {
+            const tanue = getMemberById('tanue_designer');
+            const pasha = getMemberById('pasha_developer');
+            const sasha = getMemberById('sasha_junior');
+
+            if (tanue) {
+                replacements['Tanue'] = tanue.name;
+            }
+            if (pasha) {
+                replacements['Pasha'] = pasha.name;
+            }
+            if (sasha) {
+                replacements['Sasha'] = sasha.name;
+            }
         }
 
         if (Object.keys(replacements).length === 0) {
@@ -852,17 +990,61 @@ const ConversationsModule = (function() {
 
         const result = { ...conversation };
         
+        // Escape regex special characters for use in regex patterns
+        const escapeRegex = (str) => {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        };
+
         const replaceInText = (text) => {
             if (!text || typeof text !== 'string') return text;
             let replaced = text;
             Object.entries(replacements).forEach(([oldName, newName]) => {
-                const regex = new RegExp(`\\b${oldName}\\b`, 'gi');
-                replaced = replaced.replace(regex, newName);
+                // Handle placeholder-style replacements (exact match)
+                if (oldName.startsWith('{') && oldName.endsWith('}')) {
+                    // Properly escape braces for regex
+                    const escaped = escapeRegex(oldName);
+                    replaced = replaced.replace(new RegExp(escaped, 'g'), newName);
+                } else if (oldName.includes('(') || oldName.includes(')')) {
+                    // Handle full string replacements with parentheses (exact match only)
+                    // Escape all regex special characters
+                    const escaped = escapeRegex(oldName);
+                    replaced = replaced.replace(new RegExp(escaped, 'g'), newName);
+                } else {
+                    // Handle word boundary replacements for simple names
+                    const escaped = escapeRegex(oldName);
+                    const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
+                    replaced = replaced.replace(regex, newName);
+                }
             });
             return replaced;
         };
 
-        if (result.from) {
+        // Special handling for "from" field - replace entire field if it matches hardcoded patterns
+        if (result.from && memberId) {
+            const member = getMemberById(memberId);
+            if (member) {
+                // Check if "from" field matches hardcoded patterns
+                const hardcodedPatterns = [
+                    /^Tanue\s*\([^)]*\)/i,
+                    /^Pasha\s*\([^)]*\)/i,
+                    /^Sasha\s*\([^)]*\)/i
+                ];
+                let patternMatched = false;
+                for (const pattern of hardcodedPatterns) {
+                    if (pattern.test(result.from)) {
+                        result.from = `${member.name} (${member.role || member.title || 'Team Member'})`;
+                        patternMatched = true;
+                        break;
+                    }
+                }
+                // Only use regular replacement if no pattern matched
+                if (!patternMatched) {
+                    result.from = replaceInText(result.from);
+                }
+            } else {
+                result.from = replaceInText(result.from);
+            }
+        } else if (result.from) {
             result.from = replaceInText(result.from);
         }
         if (result.body) {

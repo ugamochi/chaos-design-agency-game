@@ -262,26 +262,48 @@ const OfficeVisualizationModule = (function() {
             };
         }
 
-        if (member.currentAssignment) {
-            const project = window.GameState.projects.find(p => p.id === member.currentAssignment);
-            if (project && project.status === 'crisis') {
-                return {
-                    type: 'meeting',
-                    x: LAYOUT.meetingRoom.x + LAYOUT.meetingRoom.width / 2,
-                    y: LAYOUT.meetingRoom.y + LAYOUT.meetingRoom.height / 2
-                };
-            }
+        // Check if member is assigned to any project phase
+        let assignedToProject = null;
+        window.GameState.projects.forEach(project => {
+            if (!project.phases) return;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
+                    if (!assignedToProject) {
+                        assignedToProject = project;
+                    }
+                }
+            });
+        });
+        
+        if (assignedToProject && assignedToProject.status === 'crisis') {
+            return {
+                type: 'meeting',
+                x: LAYOUT.meetingRoom.x + LAYOUT.meetingRoom.width / 2,
+                y: LAYOUT.meetingRoom.y + LAYOUT.meetingRoom.height / 2
+            };
         }
 
         const activeWorkers = window.GameState.team
-            .filter(m => 
-                !m.hasQuit && 
-                m.id !== 'player' && 
-                (!m.currentAssignment || (() => {
-                    const proj = window.GameState.projects.find(p => p.id === m.currentAssignment);
-                    return !proj || proj.status !== 'crisis';
-                })())
-            )
+            .filter(m => {
+                if (m.hasQuit || m.id === 'player') return false;
+                
+                // Check if assigned to any crisis project
+                let hasCrisisProject = false;
+                window.GameState.projects.forEach(project => {
+                    if (!project.phases) return;
+                    ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                        const phase = project.phases[phaseName];
+                        if (phase && phase.teamAssigned && phase.teamAssigned.includes(m.id)) {
+                            if (project.status === 'crisis') {
+                                hasCrisisProject = true;
+                            }
+                        }
+                    });
+                });
+                
+                return !hasCrisisProject;
+            })
             .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
 
         if (!deskSeatAssignments.has(member.id)) {

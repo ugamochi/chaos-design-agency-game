@@ -1,5 +1,7 @@
 // Real-time game timer: 1 game hour = 1 real second
 // Timer pauses when conversations appear, resumes when resolved
+// BURNOUT RULE: Never write to member.burnout directly!
+// ALWAYS use adjustBurnout() from state.js
 
 const TimerModule = (function() {
     'use strict';
@@ -36,13 +38,67 @@ const TimerModule = (function() {
     }
 
     function shouldPauseTimer() {
-        // Pause if:
-        // - Game is over
-        // - There's an active conversation
-        // - Timer is manually paused
-        return window.GameState.gameOver || 
-               window.currentConversation !== null || 
-               isPaused;
+        // Pause priority (highest to lowest):
+        // 1. Game is over (can't unpause)
+        // 2. Active conversation (auto-pause)
+        // 3. Manual pause by user
+        
+        if (window.GameState.gameOver) {
+            return true; // Can never resume after game over
+        }
+        
+        if (window.currentConversation !== null) {
+            return true; // Auto-pause during conversations
+        }
+        
+        if (window.GameState.isManuallyPaused) {
+            return true; // Manual pause by user
+        }
+        
+        return false; // Game is running
+    }
+
+    function pauseGame() {
+        if (window.GameState.gameOver) {
+            console.warn('Cannot pause - game is over');
+            return false;
+        }
+        
+        window.GameState.isManuallyPaused = true;
+        window.updatePauseButton && window.updatePauseButton();
+        window.saveState && window.saveState();
+        console.log('Game paused by user');
+        return true;
+    }
+
+    function resumeGame() {
+        if (window.GameState.gameOver) {
+            console.warn('Cannot resume - game is over');
+            return false;
+        }
+        
+        if (window.currentConversation !== null) {
+            console.warn('Cannot resume - conversation active');
+            return false;
+        }
+        
+        window.GameState.isManuallyPaused = false;
+        window.updatePauseButton && window.updatePauseButton();
+        window.saveState && window.saveState();
+        console.log('Game resumed by user');
+        return true;
+    }
+
+    function togglePause() {
+        if (window.GameState.isManuallyPaused) {
+            return resumeGame();
+        } else {
+            return pauseGame();
+        }
+    }
+
+    function isGamePaused() {
+        return shouldPauseTimer();
     }
 
     function tickGameTime() {
@@ -70,8 +126,9 @@ const TimerModule = (function() {
 
         // Handle work day boundaries (9 AM to 6 PM)
         if (window.GameState.currentHour >= 18) {
-            // End of work day
+            // End of work day - reset to 9:00 AM
             window.GameState.currentHour = 9;
+            window.GameState.currentMinute = 0;
             window.GameState.currentDay++;
             
             // Handle week rollover
@@ -86,11 +143,27 @@ const TimerModule = (function() {
                 }
 
                 // Reset weekly hours at start of new week
+                window.resetWeeklyHours = window.resetWeeklyHours || function() {
+                    window.GameState.team.forEach(member => {
+                        member.hours = 40;
+                        member.hoursWorkedThisWeek = 0;
+                        // Reset overtime flags for new week
+                        member.overtimeWarningShown = false;
+                        member.outOfHoursWarningShown = false;
+                    });
+                };
                 window.resetWeeklyHours();
-                window.updateGamePhase();
-                window.triggerScriptedEvents();
+                window.updateGamePhase && window.updateGamePhase();
+                window.triggerScriptedEvents && window.triggerScriptedEvents();
             } else {
                 // Reset daily hours
+                window.resetDailyHours = window.resetDailyHours || function() {
+                    window.GameState.team.forEach(member => {
+                        if (!member.hasQuit && !member.isIll) {
+                            member.hours = Math.min(member.hours, 40);
+                        }
+                    });
+                };
                 window.resetDailyHours();
             }
 
@@ -142,18 +215,35 @@ const TimerModule = (function() {
         }
     }
 
+    // ONLY place hours are deducted - projects.js must NOT modify member.hours
     function deductHoursFromTeam(hoursToDeduct, allowDebt = false) {
         window.GameState.team.forEach(member => {
             if (member.isIll || member.hasQuit) {
                 return; // Skip ill or quit members
             }
 
-            // Only deduct if member is working (has assignment or is player)
-            const hasAssignment = member.currentAssignment !== null && member.currentAssignment !== undefined;
+            // Only deduct if member is working (assigned to any active phase or is player)
             const isPlayer = member.id === 'player';
             
-            if (!hasAssignment && !isPlayer) {
-                return; // Not working, don't deduct
+            // Check if member is assigned to any active phase
+            let hasActivePhaseAssignment = false;
+            if (!isPlayer) {
+                window.GameState.projects.forEach(proj => {
+                    if (!proj.phases) return;
+                    ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                        const phase = proj.phases[phaseName];
+                        if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
+                            const phaseStatus = window.getPhaseStatus ? window.getPhaseStatus(proj, phaseName) : phase.status;
+                            if (phaseStatus === 'active' || phaseStatus === 'ready') {
+                                hasActivePhaseAssignment = true;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            if (!hasActivePhaseAssignment && !isPlayer) {
+                return; // Not working, don't deduct (sits idle)
             }
 
             // Deduct hours
@@ -161,17 +251,46 @@ const TimerModule = (function() {
             let newHours = currentHours - hoursToDeduct;
             let actualHoursDeducted = hoursToDeduct;
             
-            // For player: only allow debt (negative hours) from message events, not regular clock
-            // Regular clock cannot push you from positive/zero into debt, but can make existing debt worse
-            if (isPlayer && !allowDebt && currentHours >= 0 && newHours < 0) {
-                // Prevent going from positive/zero into debt during regular clock
-                // Calculate actual hours deducted (only what was available)
-                actualHoursDeducted = currentHours;
-                newHours = 0;
+            // Different behavior for player vs workers
+            if (isPlayer) {
+                // PLAYER: Can go into overtime (negative hours)
+                // This is allowed - player can push themselves
+                if (allowDebt) {
+                    // Message events can force player into debt
+                    member.hours = newHours;
+                } else {
+                    // Regular work: player can willingly go into overtime
+                    member.hours = newHours;
+                    
+                    // Check if just crossed into overtime (first time this week)
+                    if (currentHours >= 0 && newHours < 0 && !member.overtimeWarningShown) {
+                        member.overtimeWarningShown = true;
+                        // Small morale hit for entering overtime
+                        if (member.morale && typeof member.morale.current === 'number') {
+                            member.morale.current = Math.max(0, member.morale.current - 2);
+                        }
+                    }
+                }
+            } else {
+                // WORKERS: Cannot go into overtime - stop at 0 hours
+                if (newHours < 0) {
+                    // Only deduct what's available, then stop
+                    actualHoursDeducted = currentHours;
+                    newHours = 0;
+                    
+                    // Morale penalty for running out of hours before week ends
+                    // This represents feeling overworked/exhausted
+                    if (!member.outOfHoursWarningShown && window.GameState.currentDay < 7) {
+                        member.outOfHoursWarningShown = true;
+                        if (member.morale && typeof member.morale.current === 'number') {
+                            const moralePenalty = 5; // Significant penalty
+                            member.morale.current = Math.max(0, member.morale.current - moralePenalty);
+                            console.log(`${member.name} ran out of hours! Morale -${moralePenalty}`);
+                        }
+                    }
+                }
+                member.hours = newHours;
             }
-            
-            // Update hours
-            member.hours = newHours;
             
             // Track hours worked this week (use actual hours deducted, not the full amount)
             if (member.hoursWorkedThisWeek === undefined) {
@@ -194,10 +313,9 @@ const TimerModule = (function() {
                     hoursInOvertime = Math.abs(newHours);
                 }
                 
-                // 5% burnout per hour of overtime, scaled to tick rate
-                const burnoutIncrease = hoursInOvertime * 5 * 0.01; // 5% per hour = 0.5% per 0.1 hours
-                if (member.burnout !== undefined && burnoutIncrease > 0) {
-                    member.burnout = Math.min(100, (member.burnout || 0) + burnoutIncrease);
+                // Use centralized burnout calculation (5% per hour)
+                if (window.calculateOvertimeBurnout && hoursInOvertime > 0) {
+                    window.calculateOvertimeBurnout(member.id, hoursInOvertime);
                 }
             }
 
@@ -250,9 +368,18 @@ const TimerModule = (function() {
                     return;
                 }
 
+                window.resetWeeklyHours = window.resetWeeklyHours || function() {
+                    window.GameState.team.forEach(member => {
+                        member.hours = 40;
+                        member.hoursWorkedThisWeek = 0;
+                        // Reset overtime flags for new week
+                        member.overtimeWarningShown = false;
+                        member.outOfHoursWarningShown = false;
+                    });
+                };
                 window.resetWeeklyHours();
-                window.updateGamePhase();
-                window.triggerScriptedEvents();
+                window.updateGamePhase && window.updateGamePhase();
+                window.triggerScriptedEvents && window.triggerScriptedEvents();
             } else {
                 window.resetDailyHours();
             }
@@ -320,7 +447,11 @@ const TimerModule = (function() {
         resumeTimer,
         isTimerRunning,
         advanceTimeByHours,
-        deductHoursFromTeam
+        deductHoursFromTeam,
+        pauseGame,
+        resumeGame,
+        togglePause,
+        isGamePaused
     };
 })();
 
@@ -331,4 +462,8 @@ window.pauseTimer = TimerModule.pauseTimer;
 window.resumeTimer = TimerModule.resumeTimer;
 window.isTimerRunning = TimerModule.isTimerRunning;
 window.advanceTimeByHours = TimerModule.advanceTimeByHours;
+window.pauseGame = TimerModule.pauseGame;
+window.resumeGame = TimerModule.resumeGame;
+window.togglePause = TimerModule.togglePause;
+window.isGamePaused = TimerModule.isGamePaused;
 

@@ -4,101 +4,131 @@ const GameModule = (function() {
     'use strict';
 
     async function initGame() {
-        const basePath = window.location.pathname.includes('/chaos-design-agency-game/') ? '' : './chaos-design-agency-game/';
-        window.setAllConversations(await Utils.loadJson(basePath + 'conversations.json'));
-        window.setAllTeamMembers(await Utils.loadJson(basePath + 'characters.json'));
-        window.setAllProjectTemplates(await Utils.loadJson(basePath + 'projects.json'));
+        try {
+            const basePath = window.GAME_BASE_PATH || (window.location.pathname.includes('/chaos-design-agency-game/') ? '' : './chaos-design-agency-game/');
+            window.setAllConversations(await Utils.loadJson(basePath + 'conversations.json'));
+            window.setAllTeamMembers(await Utils.loadJson(basePath + 'characters.json'));
+            window.setAllProjectTemplates(await Utils.loadJson(basePath + 'projects.json'));
 
-        console.log('Loaded conversations:', window.AllConversations.length);
-        console.log('Loaded team members:', window.AllTeamMembers.length);
-        console.log('Loaded project templates:', window.AllProjectTemplates.length);
+            console.log('Loaded conversations:', window.AllConversations.length);
+            console.log('Loaded team members:', window.AllTeamMembers.length);
+            console.log('Loaded project templates:', window.AllProjectTemplates.length);
 
-        const savedState = localStorage.getItem('agencyChaosState');
-        if (savedState) {
-            try {
-                const parsed = JSON.parse(savedState);
-                Object.assign(window.GameState, parsed);
-                
-                if (!window.GameState.keyMoments) window.GameState.keyMoments = [];
-                if (!window.GameState.gameStats) {
-                    window.GameState.gameStats = {
-                        projectsCompleted: 0,
-                        projectsFailed: 0,
-                        scopeCreepHandled: 0,
-                        teamMemberQuits: 0,
-                        deadlinesMissed: 0,
-                        perfectDeliveries: 0,
-                        totalSatisfactionPoints: 0,
-                        highestMorale: window.GameState.teamMorale || 75,
-                        lowestMorale: window.GameState.teamMorale || 75
-                    };
+            const savedState = localStorage.getItem('agencyChaosState');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    Object.assign(window.GameState, parsed);
+                    
+                    if (!window.GameState.keyMoments) window.GameState.keyMoments = [];
+                    if (!window.GameState.gameStats) {
+                        window.GameState.gameStats = {
+                            projectsCompleted: 0,
+                            projectsFailed: 0,
+                            scopeCreepHandled: 0,
+                            teamMemberQuits: 0,
+                            deadlinesMissed: 0,
+                            perfectDeliveries: 0,
+                            totalSatisfactionPoints: 0,
+                            highestMorale: window.GameState.teamMorale || 75,
+                            lowestMorale: window.GameState.teamMorale || 75
+                        };
+                    }
+                    if (!window.GameState.gamePhase) window.GameState.gamePhase = 'tutorial';
+                    if (typeof window.GameState.gameOver !== 'boolean') window.GameState.gameOver = false;
+                    if (window.GameState.victoryPath === undefined) window.GameState.victoryPath = null;
+                    if (!Array.isArray(window.GameState.shownConversationsToday)) {
+                        window.GameState.shownConversationsToday = [];
+                    }
+                    
+                    console.log('Game state loaded from localStorage');
+                    
+                    // Migrate team assignments from currentAssignment to assignedProjects
+                    if (window.migrateTeamAssignments) {
+                        window.migrateTeamAssignments();
+                    }
+                } catch (error) {
+                    console.error('Error loading saved state:', error);
+                    window.resetToDefaultState();
                 }
-                if (!window.GameState.gamePhase) window.GameState.gamePhase = 'tutorial';
-                if (typeof window.GameState.gameOver !== 'boolean') window.GameState.gameOver = false;
-                if (window.GameState.victoryPath === undefined) window.GameState.victoryPath = null;
-                if (!Array.isArray(window.GameState.shownConversationsToday)) {
-                    window.GameState.shownConversationsToday = [];
-                }
-                
-                console.log('Game state loaded from localStorage');
-            } catch (error) {
-                console.error('Error loading saved state:', error);
+            } else {
                 window.resetToDefaultState();
             }
-        } else {
-            window.resetToDefaultState();
-        }
-
-        if (window.GameState.projects.length > 0) {
-            window.GameState.projects = window.GameState.projects.map(project => window.hydrateProject(project));
-        }
-
-        if (window.GameState.team.length === 0 && window.AllTeamMembers.length > 0) {
-            initializeRandomTeam();
-        }
-        
-        window.GameState.team.forEach(member => {
-            if (member.hours === undefined || member.hours === null) {
-                member.hours = 40;
+            
+            // Ensure migration runs even for new games
+            if (window.migrateTeamAssignments) {
+                window.migrateTeamAssignments();
             }
-            if (member.id === 'player' && (member.burnout === undefined || member.burnout === null)) {
-                member.burnout = 0;
+
+            if (window.GameState.projects.length > 0) {
+                if (typeof window.hydrateProject === 'function') {
+                    window.GameState.projects = window.GameState.projects.map(project => window.hydrateProject(project));
+                } else {
+                    console.error('window.hydrateProject is not a function. Projects module may not be loaded.');
+                    // Fallback: ensure projects have required fields
+                    window.GameState.projects = window.GameState.projects.map(project => {
+                        if (!project.clientProfile) {
+                            project.clientProfile = window.DEFAULT_CLIENT_PROFILE || {};
+                        }
+                        return project;
+                    });
+                }
             }
-            if (member.hoursWorkedToday !== undefined) {
-                member.hoursWorkedThisWeek = member.hoursWorkedToday || 0;
-                delete member.hoursWorkedToday;
+
+            if (window.GameState.team.length === 0 && window.AllTeamMembers.length > 0) {
+                initializeRandomTeam();
             }
-            if (member.hoursWorkedThisWeek === undefined) {
-                member.hoursWorkedThisWeek = 0;
+            
+            window.GameState.team.forEach(member => {
+                if (member.hours === undefined || member.hours === null) {
+                    member.hours = 40;
+                }
+                if (member.id === 'player' && (member.burnout === undefined || member.burnout === null)) {
+                    member.burnout = 0;
+                }
+                if (member.hoursWorkedToday !== undefined) {
+                    member.hoursWorkedThisWeek = member.hoursWorkedToday || 0;
+                    delete member.hoursWorkedToday;
+                }
+                if (member.hoursWorkedThisWeek === undefined) {
+                    member.hoursWorkedThisWeek = 0;
+                }
+            });
+            
+            if (window.GameState.currentDay === 1) {
+                resetWeeklyHours();
             }
-        });
-        
-        if (window.GameState.currentDay === 1) {
-            resetWeeklyHours();
-        }
 
-        if (window.GameState.projects.length === 0) {
-            seedInitialProjects();
-        }
+            if (window.GameState.projects.length === 0) {
+                seedInitialProjects();
+            }
 
-        window.GameState.projects.forEach(project => window.updateProjectSatisfaction(project));
+            if (typeof window.updateProjectSatisfaction === 'function') {
+                window.GameState.projects.forEach(project => window.updateProjectSatisfaction(project));
+            } else {
+                console.error('window.updateProjectSatisfaction is not available. Projects module may not be loaded.');
+            }
 
-        window.currentConversation = null;
-        window.selectedChoiceId = null;
-        window.currentConversationStartTime = null;
-        window.currentConversationMeta = null;
+            window.currentConversation = null;
+            window.selectedChoiceId = null;
+            window.currentConversationStartTime = null;
+            window.currentConversationMeta = null;
 
-        window.checkForConversations();
-        window.displayGameState();
-        if (window.OfficeVisualization && window.OfficeVisualization.init) {
-            window.OfficeVisualization.init();
-        }
-        window.setupEventListeners();
-        window.initTutorial();
-        
-        // Start real-time game timer (1 hour = 1 second)
-        if (window.startGameTimer) {
-            window.startGameTimer();
+            window.checkForConversations();
+            window.displayGameState();
+            if (window.OfficeVisualization && window.OfficeVisualization.init) {
+                window.OfficeVisualization.init();
+            }
+            window.setupEventListeners();
+            window.initTutorial();
+            
+            // Start real-time game timer (1 hour = 1 second)
+            if (window.startGameTimer) {
+                window.startGameTimer();
+            }
+        } catch (error) {
+            console.error('Error initializing game:', error);
+            alert('Failed to load game data. Please refresh the page. Error: ' + error.message);
         }
     }
 
@@ -110,7 +140,9 @@ const GameModule = (function() {
         if (availableWorkers.length === 0) {
             window.GameState.team = player ? [{
                 ...player,
-                currentAssignment: null,
+                assignedProjects: [],
+                hourSplitRatio: 1.0,
+                hoursPerProject: 40,
                 daysOnAssignment: 0,
                 lowMoraleTriggered: false,
                 highMoraleTriggered: false,
@@ -130,7 +162,9 @@ const GameModule = (function() {
         if (player) {
             team.push({
                 ...player,
-                currentAssignment: null,
+                assignedProjects: [],
+                hourSplitRatio: 1.0,
+                hoursPerProject: 40,
                 daysOnAssignment: 0,
                 lowMoraleTriggered: false,
                 highMoraleTriggered: false,
@@ -147,7 +181,9 @@ const GameModule = (function() {
             const selectedManager = shuffledManagers[0];
             team.push({
                 ...selectedManager,
-                currentAssignment: null,
+                assignedProjects: [],
+                hourSplitRatio: 1.0,
+                hoursPerProject: 40,
                 daysOnAssignment: 0,
                 lowMoraleTriggered: false,
                 highMoraleTriggered: false,
@@ -168,7 +204,9 @@ const GameModule = (function() {
             selectedWorkers.forEach(member => {
                 team.push({
                     ...member,
-                    currentAssignment: null,
+                    assignedProjects: [],
+                    hourSplitRatio: 1.0,
+                    hoursPerProject: 40,
                     daysOnAssignment: 0,
                     lowMoraleTriggered: false,
                     highMoraleTriggered: false,
@@ -595,4 +633,12 @@ window.handleGameEnd = GameModule.handleGameEnd;
 
 document.addEventListener('DOMContentLoaded', () => {
     GameModule.initGame();
+    
+    // Initialize day progress bar
+    if (window.initDayProgressBar) {
+        window.initDayProgressBar();
+    }
+    if (window.initPauseButton) {
+        window.initPauseButton();
+    }
 });

@@ -4,7 +4,7 @@ const TutorialModule = (function() {
     'use strict';
 
     let tutorialState = {
-    enabled: true, // Tutorial enabled by default
+    enabled: false, // Tutorial disabled by default
     completed: false,
     currentStep: 0,
     steps: [
@@ -82,7 +82,7 @@ const TutorialModule = (function() {
     
     // Initialize tutorial for new games
     if (isNewGame) {
-        tutorialState.enabled = true; // Enabled by default
+        tutorialState.enabled = false; // Disabled by default
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
         saveTutorialState();
@@ -90,11 +90,11 @@ const TutorialModule = (function() {
         // For existing games, load saved state with sensible defaults
         const saved = JSON.parse(savedTutorialState);
         tutorialState.completed = saved.completed !== undefined ? saved.completed : false;
-        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : true; // Default to enabled
+        tutorialState.enabled = saved.enabled !== undefined ? saved.enabled : false; // Default to disabled
         tutorialState.currentStep = saved.currentStep || 0;
     } else {
-        // No saved state - default to enabled
-        tutorialState.enabled = true;
+        // No saved state - default to disabled
+        tutorialState.enabled = false;
         tutorialState.completed = false;
         tutorialState.currentStep = 0;
         saveTutorialState();
