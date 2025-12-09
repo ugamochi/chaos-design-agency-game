@@ -33,7 +33,7 @@ const UIModule = (function() {
     }
     
     function updatePauseIndicator() {
-        const isPaused = window.currentConversation !== null || window.GameState.gameOver;
+        const isPaused = window.currentConversation !== null || window.GameState.gameOver || window.weekendModalActive === true;
         let indicator = document.getElementById('clockPauseIndicator');
         
         if (isPaused) {
@@ -50,6 +50,8 @@ const UIModule = (function() {
             
             if (window.GameState.gameOver) {
                 indicator.innerHTML = '⏸️ Game Over';
+            } else if (window.weekendModalActive) {
+                indicator.innerHTML = '⏸️ Weekend choice pending';
             } else if (window.currentConversation) {
                 indicator.innerHTML = '⏸️ Waiting for response';
             }
@@ -136,6 +138,133 @@ const UIModule = (function() {
         }
     }
 
+    function showWeekendChoiceModal() {
+        const DOM = window.DOM || {};
+        const player = window.GameState.team.find(m => m.id === 'player');
+        const playerBurnout = player ? Math.round(player.burnout || 0) : 0;
+        const teamMorale = window.GameState.teamMorale;
+        const activeProjects = window.GameState.projects.filter(p => p.status !== 'complete');
+        const crisisProjects = activeProjects.filter(p => p.status === 'crisis');
+        const consecutiveWeekends = window.GameState.consecutiveWeekendsWorked || 0;
+        
+        // Show warning if on 2nd consecutive weekend
+        const warningBadge = consecutiveWeekends >= 2 ? 
+            `<div class="weekend-warning-badge">⚠️ Warning: Team worked ${consecutiveWeekends} weekends in a row</div>` : '';
+        
+        const warningMessage = consecutiveWeekends === 2 ? 
+            `<div class="weekend-danger-message">🚨 <strong>Critical:</strong> If you ask the team to work again, people will quit!</div>` : '';
+        
+        const content = `
+            <div class="weekend-choice-modal">
+                <h2>🌅 It's the Weekend</h2>
+                ${warningBadge}
+                ${warningMessage}
+                
+                <div class="weekend-situation">
+                    <p class="weekend-intro">Friday evening. The week is over. What do you do?</p>
+                    
+                    <div class="weekend-status-grid">
+                        <div class="status-item">
+                            <span class="status-label">Your Burnout:</span>
+                            <span class="status-value burnout-${playerBurnout >= 80 ? 'critical' : playerBurnout >= 60 ? 'high' : 'ok'}">${playerBurnout}%</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Team Morale:</span>
+                            <span class="status-value morale-${teamMorale >= 70 ? 'high' : teamMorale >= 50 ? 'ok' : 'low'}">${teamMorale}%</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Active Projects:</span>
+                            <span class="status-value">${activeProjects.length}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Crisis Projects:</span>
+                            <span class="status-value ${crisisProjects.length > 0 ? 'crisis' : ''}">${crisisProjects.length}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekend-choices">
+                    <button class="weekend-choice-btn choice-rest" data-choice="rest">
+                        <div class="choice-header">
+                            <span class="choice-icon">🏖️</span>
+                            <span class="choice-title">Everyone Takes the Weekend Off</span>
+                        </div>
+                        <div class="choice-description">
+                            Close the laptop. The team thanks you for respecting their time.
+                        </div>
+                        <div class="choice-consequences">
+                            <span class="consequence-good">😊 Your burnout -20%</span>
+                            <span class="consequence-good">📈 Team morale +10%</span>
+                            <span class="consequence-neutral">⏸️ No project progress</span>
+                        </div>
+                    </button>
+                    
+                    <button class="weekend-choice-btn choice-solo" data-choice="solo">
+                        <div class="choice-header">
+                            <span class="choice-icon">💻</span>
+                            <span class="choice-title">I'll Work Solo This Weekend</span>
+                        </div>
+                        <div class="choice-description">
+                            You tell the team to rest. You'll handle it. By Sunday night you're exhausted.
+                        </div>
+                        <div class="choice-consequences">
+                            <span class="consequence-bad">🔥 Your burnout +30%</span>
+                            <span class="consequence-good">😊 Team morale +5%</span>
+                            <span class="consequence-neutral">📈 Your projects +8% progress</span>
+                        </div>
+                    </button>
+                    
+                    <button class="weekend-choice-btn choice-team ${consecutiveWeekends >= 2 ? 'choice-danger' : ''}" data-choice="team">
+                        <div class="choice-header">
+                            <span class="choice-icon">👥</span>
+                            <span class="choice-title">Everyone Comes In This Weekend</span>
+                        </div>
+                        <div class="choice-description">
+                            ${consecutiveWeekends >= 2 
+                                ? '<strong style="color: #ff4444;">⚠️ DANGER: This will cause people to quit!</strong>' 
+                                : 'Nobody\'s happy about it, but they show up Saturday morning.'}
+                        </div>
+                        <div class="choice-consequences">
+                            <span class="consequence-bad">🔥 Your burnout +15%</span>
+                            <span class="consequence-bad">😔 Team morale -${consecutiveWeekends === 1 ? '15' : '10'}%</span>
+                            <span class="consequence-good">🚀 All projects +15% progress</span>
+                            ${consecutiveWeekends >= 1 ? '<span class="consequence-warning">⚠️ Consecutive weekend #' + (consecutiveWeekends + 1) + '</span>' : ''}
+                        </div>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const { overlay, modal } = DOM.createModal ? DOM.createModal(content, 'modal-content weekend-choice-modal') : createModalFallback(content, 'modal-content weekend-choice-modal');
+        
+        // Prevent closing by clicking outside
+        overlay.style.pointerEvents = 'none';
+        modal.style.pointerEvents = 'auto';
+        
+        // Pause the game timer when weekend modal is shown
+        window.weekendModalActive = true;
+        if (window.updatePauseButton) {
+            window.updatePauseButton();
+        }
+        
+        // Add click handlers for choices
+        const choiceButtons = modal.querySelectorAll('.weekend-choice-btn');
+        choiceButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const choice = btn.getAttribute('data-choice');
+                overlay.remove();
+                
+                // Resume timer after choice is made
+                window.weekendModalActive = false;
+                if (window.updatePauseButton) {
+                    window.updatePauseButton();
+                }
+                
+                window.handleWeekendChoice(choice);
+            });
+        });
+    }
+    
     function createModalFallback(content, className) {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -573,6 +702,10 @@ const UIModule = (function() {
             return;
         }
 
+        // Create team summary section
+        const summarySection = createTeamSummary();
+        container.appendChild(summarySection);
+
         window.GameState.team.forEach(member => {
             const status = window.getTeamMemberStatus(member.id);
             const memberCard = createTeamMemberCard(member, status);
@@ -584,6 +717,47 @@ const UIModule = (function() {
             updateHoursIndicator(member);
         });
 }
+
+    function createTeamSummary() {
+        const summary = document.createElement('div');
+        summary.className = 'team-summary';
+        
+        const activeMembers = window.GameState.team.filter(m => !m.hasQuit);
+        const totalMembers = window.GameState.team.length;
+        const avgMorale = activeMembers.length > 0
+            ? Math.round(activeMembers.reduce((sum, m) => sum + (m.morale?.current || 0), 0) / activeMembers.length)
+            : 0;
+        const totalHours = activeMembers.reduce((sum, m) => sum + (m.hours || 0), 0);
+        const availableCount = activeMembers.filter(m => {
+            const status = window.getTeamMemberStatus(m.id);
+            return status.isAvailable;
+        }).length;
+        
+        const moraleColor = avgMorale >= 70 ? 'var(--success)' : avgMorale >= 40 ? 'var(--warning)' : 'var(--destructive)';
+        
+        summary.innerHTML = `
+            <div class="team-summary-grid">
+                <div class="team-summary-item">
+                    <div class="team-summary-label">Team Size</div>
+                    <div class="team-summary-value">${activeMembers.length}/${totalMembers}</div>
+                </div>
+                <div class="team-summary-item">
+                    <div class="team-summary-label">Avg Morale</div>
+                    <div class="team-summary-value" style="color: ${moraleColor}">${avgMorale}%</div>
+                </div>
+                <div class="team-summary-item">
+                    <div class="team-summary-label">Available</div>
+                    <div class="team-summary-value">${availableCount}</div>
+                </div>
+                <div class="team-summary-item">
+                    <div class="team-summary-label">Total Hours</div>
+                    <div class="team-summary-value">${Math.round(totalHours)}h</div>
+                </div>
+            </div>
+        `;
+        
+        return summary;
+    }
 
     function createTeamMemberCard(member, status) {
         const card = document.createElement('div');
@@ -633,30 +807,55 @@ const UIModule = (function() {
         
         const projectName = assignmentList;
         const assignedProjectCount = projectsFromPhases.size;
+        const morale = member.morale && typeof member.morale.current === 'number' ? member.morale.current : 0;
+        const moraleColor = morale >= 70 ? 'var(--success)' : morale >= 40 ? 'var(--warning)' : 'var(--destructive)';
+        const currentHours = Math.max(0, member.hours || 0);
+        const maxHours = member.maxHours || 40;
+        const hoursDisplay = `${Math.round(currentHours * 10) / 10}h / ${maxHours}h`;
 
         card.innerHTML = `
             <div class="team-member-card-header" data-accordion-toggle>
-                <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
-                
-                <div class="team-member-main-info">
-                    <div class="team-member-identity">
-                        <div class="team-member-name">${member.name}</div>
-                        <div class="team-member-role">${member.role}</div>
-                    </div>
+                <div class="team-member-header-left">
+                    <div class="team-member-avatar">${member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</div>
                     
-                    <div class="team-member-project-compact">
-                        <span class="project-icon">📋</span>
-                        <span class="project-text">${projectName}</span>
+                    <div class="team-member-main-info">
+                        <div class="team-member-identity">
+                            <div class="team-member-name-row">
+                                <div class="team-member-name">${member.name}</div>
+                                <div class="team-member-status-badge ${status.assignmentClass}">
+                                    <span class="status-dot"></span>
+                                    <span class="status-text">${status.assignmentLabel}${member.isIll ? ' (Ill)' : ''}</span>
+                                </div>
+                            </div>
+                            <div class="team-member-role">${member.role}</div>
+                        </div>
+                        
+                        <div class="team-member-project-compact">
+                            <span class="project-icon">📋</span>
+                            <span class="project-text">${projectName}</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="team-member-expand-icon">▼</div>
+                <div class="team-member-header-right">
+                    <div class="team-member-quick-stats">
+                        <div class="quick-stat">
+                            <span class="quick-stat-label">😊</span>
+                            <span class="quick-stat-value" style="color: ${moraleColor}">${morale}%</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="quick-stat-label">🎯</span>
+                            <span class="quick-stat-value">${member.skill}/5</span>
+                        </div>
+                        <div class="quick-stat hours-quick-stat" id="hours-quick-${member.id}">
+                            <span class="quick-stat-label">⏰</span>
+                            <span class="quick-stat-value">${hoursDisplay}</span>
+                        </div>
+                    </div>
+                    <div class="team-member-expand-icon">▼</div>
+                </div>
             </div>
             <div class="team-member-card-content" style="display: none;">
-                <div class="team-member-status ${status.assignmentClass}">
-                    <span class="status-dot"></span>
-                    <span>${status.assignmentLabel}${member.isIll ? ' (Ill)' : ''}</span>
-                </div>
                 ${showBio ? `
                     <div class="team-member-bio">
                         <p>${bio}</p>
@@ -667,14 +866,18 @@ const UIModule = (function() {
                         ${traits.map(trait => `<span class="trait-badge">${trait}</span>`).join('')}
                     </div>
                 ` : ''}
-                <div class="team-member-stats">
-                    <div class="team-member-skill">
-                        <strong>🎯 Skill:</strong>
-                        <span>${member.skill}/5</span>
+                <div class="team-member-detailed-stats">
+                    <div class="team-member-stat-item">
+                        <div class="stat-label">🎯 Skill Level</div>
+                        <div class="stat-value">${member.skill}/5</div>
                     </div>
-                    <div class="team-member-morale">
-                        <strong>😊 Morale:</strong>
-                        <span>${member.morale && typeof member.morale.current === 'number' ? member.morale.current : 0}%</span>
+                    <div class="team-member-stat-item">
+                        <div class="stat-label">😊 Morale</div>
+                        <div class="stat-value" style="color: ${moraleColor}">${morale}%</div>
+                    </div>
+                    <div class="team-member-stat-item">
+                        <div class="stat-label">⏰ Hours This Week</div>
+                        <div class="stat-value" id="hours-detailed-${member.id}">${hoursDisplay}</div>
                     </div>
                 </div>
                 <div class="team-member-actions">
@@ -685,12 +888,26 @@ const UIModule = (function() {
             </div>
         `;
 
-        // Add hours indicator after main-info section
-        const mainInfo = card.querySelector('.team-member-main-info');
-        if (mainInfo) {
-            const hoursIndicator = createHoursIndicator(member);
-            mainInfo.parentElement.insertBefore(hoursIndicator, mainInfo.nextSibling);
-        }
+        // Update hours display in quick stats
+        const updateHoursQuickStat = () => {
+            const quickStat = card.querySelector(`#hours-quick-${member.id}`);
+            const detailedStat = card.querySelector(`#hours-detailed-${member.id}`);
+            if (quickStat) {
+                const currentHours = Math.max(0, member.hours || 0);
+                const maxHours = member.maxHours || 40;
+                const hoursDisplay = `${Math.round(currentHours * 10) / 10}h / ${maxHours}h`;
+                quickStat.querySelector('.quick-stat-value').textContent = hoursDisplay;
+            }
+            if (detailedStat) {
+                const currentHours = Math.max(0, member.hours || 0);
+                const maxHours = member.maxHours || 40;
+                const hoursDisplay = `${Math.round(currentHours * 10) / 10}h / ${maxHours}h`;
+                detailedStat.textContent = hoursDisplay;
+            }
+        };
+        
+        // Store update function for later use
+        card._updateHoursQuickStat = updateHoursQuickStat;
 
         const toggleBtn = card.querySelector('[data-accordion-toggle]');
         const content = card.querySelector('.team-member-card-content');
@@ -794,12 +1011,16 @@ const UIModule = (function() {
         const label = document.getElementById(`hours-label-${member.id}`);
         const container = document.getElementById(`hours-indicator-${member.id}`);
         
-        if (!bar || !label || !container) {
-            return; // Elements don't exist yet
+        if (bar && label && container) {
+            // Use the shared update logic for old-style indicators
+            updateHoursIndicatorElements(member, bar, label, container);
         }
         
-        // Use the shared update logic
-        updateHoursIndicatorElements(member, bar, label, container);
+        // Update new quick stat display
+        const card = document.querySelector(`[data-member-id="${member.id}"]`);
+        if (card && card._updateHoursQuickStat) {
+            card._updateHoursQuickStat();
+        }
     }
 
     function showAssignmentModal(memberId) {
@@ -1691,6 +1912,39 @@ Conversation History: ${window.GameState.conversationHistory.length}
         if (window.initButtonAnimations) {
             window.initButtonAnimations();
         }
+        
+        // Initialize tab navigation
+        initTabNavigation();
+    }
+    
+    function initTabNavigation() {
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTabId = tab.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and contents
+                navTabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                const targetContent = document.getElementById(targetTabId);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
+            });
+        });
+        
+        // Ensure Messages tab is active by default
+        const messagesTab = document.querySelector('.nav-tab[data-tab="messagesTab"]');
+        const messagesContent = document.getElementById('messagesTab');
+        if (messagesTab && messagesContent) {
+            messagesTab.classList.add('active');
+            messagesContent.classList.add('active');
+        }
     }
 
     function showSettingsModal() {
@@ -2109,10 +2363,11 @@ Conversation History: ${window.GameState.conversationHistory.length}
         const isPaused = window.isGamePaused && window.isGamePaused();
         const isManuallyPaused = window.GameState.isManuallyPaused;
         const isConversation = window.currentConversation !== null;
+        const isWeekendModal = window.weekendModalActive === true;
         const isGameOver = window.GameState.gameOver;
         
-        // Disable button during conversation or game over
-        if (isConversation || isGameOver) {
+        // Disable button during conversation, weekend modal, or game over
+        if (isConversation || isWeekendModal || isGameOver) {
             pauseBtn.disabled = true;
             pauseBtn.style.opacity = '0.5';
             pauseBtn.style.cursor = 'not-allowed';
@@ -2126,6 +2381,10 @@ Conversation History: ${window.GameState.conversationHistory.length}
                 } else {
                     pauseBtn.title = 'Cannot pause during conversation';
                 }
+            } else if (isWeekendModal) {
+                // Weekend modal: show pause icon (game IS paused by weekend choice)
+                pauseBtn.classList.remove('paused');
+                pauseBtn.title = 'Cannot pause during weekend choice';
             } else if (isGameOver) {
                 // Game over: show pause icon since game is stopped
                 pauseBtn.classList.remove('paused');
@@ -2221,6 +2480,7 @@ Conversation History: ${window.GameState.conversationHistory.length}
         highlightTeamMemberCard,
         showProjectCompletion,
         showWeekSummary,
+        showWeekendChoiceModal,
         displayGameState,
         displayProjects,
         createProjectCard,
@@ -2241,6 +2501,7 @@ Conversation History: ${window.GameState.conversationHistory.length}
         viewSummary,
         showEndGameScreen,
         setupEventListeners,
+        initTabNavigation,
         showSettingsModal,
         hideSettingsModal,
         showHelpModal,
@@ -2263,6 +2524,7 @@ window.initPauseButton = UIModule.initPauseButton;
 window.highlightTeamMemberCard = UIModule.highlightTeamMemberCard;
 window.showProjectCompletion = UIModule.showProjectCompletion;
 window.showWeekSummary = UIModule.showWeekSummary;
+window.showWeekendChoiceModal = UIModule.showWeekendChoiceModal;
 window.displayGameState = UIModule.displayGameState;
 window.displayProjects = UIModule.displayProjects;
 window.createProjectCard = UIModule.createProjectCard;
@@ -2283,6 +2545,7 @@ window.showResetConfirmModal = UIModule.showResetConfirmModal;
 window.viewSummary = UIModule.viewSummary;
 window.showEndGameScreen = UIModule.showEndGameScreen;
 window.setupEventListeners = UIModule.setupEventListeners;
+window.initTabNavigation = UIModule.initTabNavigation;
 window.showSettingsModal = UIModule.showSettingsModal;
 window.hideSettingsModal = UIModule.hideSettingsModal;
 window.showHelpModal = UIModule.showHelpModal;
