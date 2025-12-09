@@ -341,9 +341,30 @@ const ConversationsModule = (function() {
             applyConsequences(choice.consequences || {}, currentConversation);
             window.showConsequenceFeedback(choice.flavorText || '', choice.consequences || {});
 
-            window.GameState.resolvedConversations.push(currentConversation.id);
+            // Mark as resolved IMMEDIATELY
+            const conversationId = currentConversation.id;
+            window.GameState.resolvedConversations.push(conversationId);
+            
+            // Remove conversation from queue if it's there
+            const queueIndex = window.GameState.conversationQueue.indexOf(conversationId);
+            if (queueIndex > -1) {
+                window.GameState.conversationQueue.splice(queueIndex, 1);
+            }
+            
+            // Clear current conversation state IMMEDIATELY
             window.currentConversation = null;
             window.selectedChoiceId = null;
+            currentConversation = null;
+            selectedChoiceId = null;
+
+            // Remove conversation container from DOM IMMEDIATELY
+            if (conversationContainer) {
+                conversationContainer.style.opacity = '0';
+                conversationContainer.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    conversationContainer.remove();
+                }, 300);
+            }
 
             window.displayGameState();
             window.saveState();
@@ -410,9 +431,14 @@ const ConversationsModule = (function() {
             const player = window.GameState.team.find(m => m.id === 'player');
             if (player && window.adjustBurnout) {
                 const conversationSubject = conversation?.subject || conversation?.title || 'Unknown conversation';
+                // REDUCED RELIEF: Make burnout relief 40% less effective for urgency
+                // Burnout is harder to reduce - player must make strategic choices
+                const reliefAmount = consequences.playerBurnout < 0 
+                    ? Math.round(consequences.playerBurnout * 0.6) // 40% reduction for relief
+                    : consequences.playerBurnout; // Keep increases as-is
                 window.adjustBurnout(
                     player.id,
-                    consequences.playerBurnout,
+                    reliefAmount,
                     `Conversation: ${conversationSubject}`
                 );
             }
@@ -504,13 +530,44 @@ const ConversationsModule = (function() {
             if (Array.isArray(window.AllProjectTemplates)) {
                 const template = window.AllProjectTemplates.find(t => t && t.id === templateId);
                 if (template) {
+                    // PENALTY 3: Client reputation damage - reduce budget based on deadline history
+                    let budgetMultiplier = 1.0;
+                    const stats = window.GameState.gameStats;
+                    const deadlinesMissed = stats.deadlinesMissed || 0;
+                    const projectsCompleted = stats.projectsCompleted || 0;
+                    
+                    if (projectsCompleted > 0 && deadlinesMissed > 0) {
+                        const missRatio = deadlinesMissed / projectsCompleted;
+                        if (missRatio >= 0.5) {
+                            budgetMultiplier = 0.7; // 30% budget cut if 50%+ deadline miss rate
+                        } else if (missRatio >= 0.3) {
+                            budgetMultiplier = 0.85; // 15% budget cut if 30%+ deadline miss rate
+                        } else if (missRatio >= 0.1) {
+                            budgetMultiplier = 0.95; // 5% budget cut if 10%+ deadline miss rate
+                        }
+                    }
+                    
+                    const adjustedBudget = Math.round(template.budget * budgetMultiplier);
+                    
                     const newProject = window.buildProjectFromTemplate(template, {
                         id: `proj-${Date.now()}`,
                         progress: 0,
-                        weeksRemaining: template.totalWeeks
+                        weeksRemaining: template.totalWeeks,
+                        budget: adjustedBudget
                     });
                     window.GameState.projects.push(window.hydrateProject(newProject));
-                    window.showSuccessToast(`📋 New project added: ${template.name}`, 3000);
+                    
+                    if (budgetMultiplier < 1.0) {
+                        window.showWarningToast(`📋 New project added: ${template.name} (Budget reduced to $${adjustedBudget.toLocaleString()} due to reputation damage)`, 4000);
+                        window.GameState.conversationHistory.push({
+                            title: `⚠️ Reputation Impact`,
+                            message: `${template.client} offered lower budget ($${adjustedBudget.toLocaleString()} vs usual $${template.budget.toLocaleString()}) due to your history of missed deadlines.`,
+                            type: 'warning',
+                            timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
+                        });
+                    } else {
+                        window.showSuccessToast(`📋 New project added: ${template.name}`, 3000);
+                    }
                 }
             }
         }
@@ -753,24 +810,63 @@ const ConversationsModule = (function() {
         queueConversation(conversationId);
     }
 
+    // Helper function to check if member has any phase assignments
+    function hasPhaseAssignment(memberId) {
+        let hasAssignment = false;
+        window.GameState.projects.forEach(project => {
+            if (!project.phases) return;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned && phase.teamAssigned.includes(memberId)) {
+                    hasAssignment = true;
+                }
+            });
+        });
+        return hasAssignment;
+    }
+
+    // Helper function to get project IDs where member is assigned (from phase assignments)
+    function getAssignedProjectIds(memberId) {
+        const projectIds = new Set();
+        window.GameState.projects.forEach(project => {
+            if (!project.phases) return;
+            let assignedToThisProject = false;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned && phase.teamAssigned.includes(memberId)) {
+                    assignedToThisProject = true;
+                }
+            });
+            if (assignedToThisProject) {
+                projectIds.add(project.id);
+            }
+        });
+        return Array.from(projectIds);
+    }
+
     function checkTeamEvents() {
         window.GameState.team.forEach(member => {
             if (member.id === 'player') return;
             if (!member.personality || !member.personality.type) return;
 
-            if (member.personality.type === 'perfectionist' && member.currentAssignment && Math.random() < 0.05) {
+            // FIX: Check phase assignments instead of legacy currentAssignment
+            const hasAssignment = hasPhaseAssignment(member.id) || 
+                                  (member.assignedProjects && member.assignedProjects.length > 0) ||
+                                  member.currentAssignment; // Fallback for backward compatibility
+
+            if (member.personality.type === 'perfectionist' && hasAssignment && Math.random() < 0.05) {
                 triggerTeamEvent(member, 'perfectionist_polish');
             }
 
-            if (member.personality.type === 'pragmatic' && member.currentAssignment && Math.random() < 0.05) {
+            if (member.personality.type === 'pragmatic' && hasAssignment && Math.random() < 0.05) {
                 triggerTeamEvent(member, 'pragmatic_scope');
             }
 
-            if (member.personality.type === 'eager' && member.currentAssignment && Math.random() < 0.08) {
+            if (member.personality.type === 'eager' && hasAssignment && Math.random() < 0.08) {
                 triggerTeamEvent(member, 'eager_help');
             }
 
-            if (member.personality.type === 'eager' && member.currentAssignment && Math.random() < 0.04) {
+            if (member.personality.type === 'eager' && hasAssignment && Math.random() < 0.04) {
                 triggerTeamEvent(member, 'eager_brilliant');
             }
         });
@@ -780,10 +876,17 @@ const ConversationsModule = (function() {
         window.GameState.team.forEach(member => {
             if (member.id === 'player') return;
             
-            // Check both assignedProjects array and legacy currentAssignment for backward compatibility
-            const assignments = (member.assignedProjects && member.assignedProjects.length > 0) 
-                ? member.assignedProjects 
-                : (member.currentAssignment ? [member.currentAssignment] : []);
+            // FIX: Get assignments from phase-specific system, with legacy fallback
+            const assignments = getAssignedProjectIds(member.id);
+            
+            // Fallback to legacy fields for backward compatibility
+            if (assignments.length === 0) {
+                if (member.assignedProjects && member.assignedProjects.length > 0) {
+                    assignments.push(...member.assignedProjects);
+                } else if (member.currentAssignment) {
+                    assignments.push(member.currentAssignment);
+                }
+            }
             
             assignments.forEach(projectId => {
                 if (!projectAssignments[projectId]) {

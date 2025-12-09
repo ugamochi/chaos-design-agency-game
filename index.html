@@ -18,7 +18,9 @@
             }
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="chaos-design-agency-game/styles.css">
 </head>
 <body>
@@ -81,29 +83,32 @@
             </div>
         </header>
 
-        <!-- Main Content Area (Messages and Team Side by Side) -->
+        <!-- Main Content Area (Messages, Projects, and Team) -->
         <div class="main-layout-container">
-            <!-- Main Content Area (Messages and Projects) -->
-            <main class="main-content">
-                <div class="main-content-header">
-                    <h2>Messages</h2>
-                    <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
-                </div>
-                <div id="contentArea" class="content-area">
-                    <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
-                </div>
-                <div id="activityFeed" class="activity-feed">
-                    <!-- Activity feed will be dynamically inserted here -->
-                </div>
+            <!-- Left Column: Messages and Projects -->
+            <div class="left-column">
+                <!-- Messages Section -->
+                <section class="messages-section">
+                    <div class="messages-header">
+                        <h2>Messages</h2>
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0 notifications</span>
+                    </div>
+                    <div id="contentArea" class="content-area">
+                        <p class="welcome-message">Welcome to Agency Chaos Simulator! The game runs automatically in real-time.</p>
+                    </div>
+                    <div id="activityFeed" class="activity-feed">
+                        <!-- Activity feed will be dynamically inserted here -->
+                    </div>
+                </section>
 
-                <!-- Project Timeline Section -->
+                <!-- Projects Section -->
                 <section class="project-timeline">
                     <h2>Active Projects</h2>
                     <div id="projectsContainer" class="projects-container">
                         <!-- Projects will be dynamically inserted here -->
                     </div>
                 </section>
-            </main>
+            </div>
 
             <!-- Team Section -->
             <section class="team-section">
@@ -236,7 +241,7 @@
             <div class="credits-content">
                 <p>A game about the beautiful chaos of running a small creative agency.</p>
                 <p>Every decision matters. Every client is unique. Every team member has a breaking point.</p>
-                <p style="margin-top: 2rem; font-style: italic;">Can you survive 12 weeks of deadlines, scope creep, and late-night client emails?</p>
+                <p style="margin-top: 2rem; font-weight: 700;">Can you survive 12 weeks of deadlines, scope creep, and late-night client emails?</p>
                 <p style="margin-top: 2rem; color: #666; font-size: 0.9rem;">Built with chaos, coffee, and care.</p>
             </div>
             <button id="closeCreditsBtn" class="btn btn-primary">Close</button>

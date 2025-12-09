@@ -137,6 +137,10 @@ const GameModule = (function() {
         const player = allMembers.find(m => m.id === 'player');
         const availableWorkers = allMembers.filter(m => m.id !== 'player');
         
+        // Check if player already exists in GameState (from saved game) to preserve burnout
+        const existingPlayer = window.GameState.team.find(m => m.id === 'player');
+        const preservedBurnout = existingPlayer && existingPlayer.burnout !== undefined ? existingPlayer.burnout : 0;
+        
         if (availableWorkers.length === 0) {
             window.GameState.team = player ? [{
                 ...player,
@@ -148,7 +152,7 @@ const GameModule = (function() {
                 highMoraleTriggered: false,
                 hours: 40,
                 hoursWorkedThisWeek: 0,
-                burnout: 0,
+                burnout: preservedBurnout, // Preserve existing burnout, don't reset to 0
                 isIll: false,
                 hasQuit: false
             }] : [];
@@ -170,7 +174,7 @@ const GameModule = (function() {
                 highMoraleTriggered: false,
                 hours: 40,
                 hoursWorkedThisWeek: 0,
-                burnout: 0,
+                burnout: preservedBurnout, // Preserve existing burnout, don't reset to 0
                 isIll: false,
                 hasQuit: false
             });
@@ -226,8 +230,18 @@ const GameModule = (function() {
     }
 
     function seedInitialProjects() {
-        // Start with no projects - new projects will come via conversations
-        window.GameState.projects = [];
+        // Start with 1 project to give players immediate work
+        const startingTemplate = window.AllProjectTemplates.find(t => t.id === 'small_business_site');
+        if (startingTemplate) {
+            const initialProject = window.buildProjectFromTemplate(startingTemplate, {
+                id: 'proj-001',
+                progress: 0,
+                weeksRemaining: startingTemplate.totalWeeks
+            });
+            window.GameState.projects = [window.hydrateProject(initialProject)];
+        } else {
+            window.GameState.projects = [];
+        }
     }
 
     function advanceDay() {
@@ -260,6 +274,7 @@ const GameModule = (function() {
         window.advanceClock();
 
         if (window.GameState.currentDay > 7) {
+            processWeeklySalaries(); // Pay for the full week (7 days)
             window.GameState.currentDay = 1;
             window.GameState.currentWeek++;
             window.GameState.currentHour = 9; // Reset to 9 AM on new week
@@ -300,16 +315,13 @@ const GameModule = (function() {
 
         if (window.GameState.currentDay === 7) {
             window.checkTeamPulse();
-            processWeeklyCosts(); // Keep for backward compatibility
+            // processWeeklySalaries moved to end of week (Day 7 -> 1)
             setTimeout(() => window.showWeekSummary(), 500);
             window.generateWeeklyClientFeedback();
         }
         
-        // Process monthly salaries at the start of each new month (day 1 of weeks 1, 5, 9)
-        if (window.GameState.currentDay === 1) {
-            processMonthlySalaries();
-        }
-
+        // Process monthly salaries - REMOVED (replaced by weekly system)
+        
         window.checkProjectDeadlines();
         updateGameStats();
         window.saveState();
@@ -504,44 +516,69 @@ const GameModule = (function() {
         // This function is deprecated but kept to avoid breaking changes
     }
 
-    function processMonthlySalaries() {
-        // Pay salaries starting from week 5, then every 4 weeks (weeks 5, 9)
-        // Calculate which payroll period we're in (0 = week 5, 1 = week 9, etc.)
-        const payrollPeriod = window.GameState.currentWeek >= 5 
-            ? Math.floor((window.GameState.currentWeek - 5) / window.GameConstants.WEEKS_PER_MONTH)
-            : -1;
-        const lastPayrollPeriod = window.GameState.lastSalaryMonth || -1;
+    function processWeeklySalaries() {
+        const C = window.GameConstants;
+        let totalPayroll = 0;
+        let paymentDetails = [];
+
+        // Pay Workers
+        window.GameState.team.forEach(member => {
+            if (member.id === 'player' || member.hasQuit) return;
+
+            let memberPay = 0;
+            const role = member.role ? member.role.toUpperCase() : 'DEFAULT';
+            // Handle managers specifically or fallback to default
+            const hourlyRate = (role.includes('MANAGER') ? C.HOURLY_RATES.MANAGER : 
+                              (role.includes('DESIGNER') ? C.HOURLY_RATES.DESIGNER : 
+                              (role.includes('DEVELOPER') ? C.HOURLY_RATES.DEVELOPER : C.HOURLY_RATES.DEFAULT)));
+            
+            if (member.weeklyPhaseHours) {
+                Object.entries(member.weeklyPhaseHours).forEach(([phaseName, hours]) => {
+                    // Calculate efficiency for this phase
+                    // We use current efficiency as an approximation for the week
+                    const efficiency = window.getEfficiencyForPhase ? window.getEfficiencyForPhase(member, phaseName) : 1.0;
+                    memberPay += hours * hourlyRate * efficiency;
+                });
+            }
+
+            // Minimum wage check
+            if (memberPay < C.MIN_WEEKLY_PAY) {
+                memberPay = C.MIN_WEEKLY_PAY;
+            }
+
+            totalPayroll += memberPay;
+            paymentDetails.push(`${member.name}: €${Math.round(memberPay)}`);
+        });
+
+        // Pay Player
+        if (window.GameState.money >= C.PLAYER_WEEKLY_SALARY) {
+            totalPayroll += C.PLAYER_WEEKLY_SALARY;
+            paymentDetails.push(`You: €${C.PLAYER_WEEKLY_SALARY}`);
+        } else {
+            paymentDetails.push(`You: €0 (Insufficient funds)`);
+        }
+
+        // Overhead
+        const overhead = C.WEEKLY_OVERHEAD;
+        totalPayroll += overhead;
+
+        // Deduct
+        window.GameState.money -= totalPayroll;
+
+        // Log
+        window.GameState.conversationHistory.push({
+            title: 'Weekly Payroll',
+            message: `Salaries paid:\n${paymentDetails.join('\n')}\nOverhead: -€${overhead}\nTotal: -€${Math.round(totalPayroll)}`,
+            type: 'info',
+            timestamp: `Week ${window.GameState.currentWeek}, Day 7`
+        });
+
+        if (window.GameState.money < 1000 && window.GameState.money > 0) {
+            window.recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
+        }
         
-        // Pay salaries at the start of each payroll period (weeks 5, 9) on day 1
-        // Skip if we're before week 5
-        if (payrollPeriod >= 0 && payrollPeriod > lastPayrollPeriod && window.GameState.currentDay === 1) {
-            const teamSize = window.GameState.team.filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false)).length;
-            const monthlySalary = teamSize * window.GameConstants.MONTHLY_SALARY_PER_MEMBER;
-            const monthlyOverhead = window.GameConstants.MONTHLY_OVERHEAD;
-            const totalMonthlyCosts = monthlySalary + monthlyOverhead;
-            
-            window.GameState.money -= totalMonthlyCosts;
-            window.GameState.lastSalaryMonth = payrollPeriod;
-            
-            const employeeNames = window.GameState.team
-                .filter(m => m.id !== 'player' && (!m.hasQuit || m.hasQuit === false))
-                .map(m => m.name)
-                .join(', ');
-            
-            window.GameState.conversationHistory.push({
-                title: 'Monthly Payroll',
-                message: `Salaries paid: ${employeeNames ? `-$${monthlySalary.toLocaleString()} (${employeeNames})` : 'No employees'}\nOverhead: -$${monthlyOverhead.toLocaleString()}\nTotal: -$${totalMonthlyCosts.toLocaleString()}`,
-                type: 'info',
-                timestamp: `Week ${window.GameState.currentWeek}, Payroll Period ${payrollPeriod + 1}`
-            });
-            
-            if (window.GameState.money < 1000 && window.GameState.money > 0) {
-                window.recordKeyMoment('Low on Cash', 'Running dangerously low on funds', 'crisis');
-            }
-            
-            if (totalMonthlyCosts > 0) {
-                window.showWarningToast(`💰 Monthly payroll: -$${totalMonthlyCosts.toLocaleString()}`, 4000);
-            }
+        if (totalPayroll > 0) {
+            window.showWarningToast(`💰 Weekly payroll: -€${Math.round(totalPayroll)}`, 4000);
         }
     }
 
@@ -551,6 +588,9 @@ const GameModule = (function() {
             member.hours = 40 + previousWeekDeficit;
             member.hoursWorkedThisWeek = 0;
             member._hoursDeductedToday = false;
+            member.weeklyPhaseHours = {}; // Reset phase hours for new week
+            member.overtimeWarningShown = false;
+            member.outOfHoursWarningShown = false;
         });
     }
     
@@ -606,7 +646,7 @@ const GameModule = (function() {
         getRankTitle,
         getEndGameMessage,
         processWeeklyCosts,
-        processMonthlySalaries,
+        processWeeklySalaries, // Updated
         resetDailyHours,
         handleGameEnd
     };
@@ -626,7 +666,7 @@ window.getBestScore = GameModule.getBestScore;
 window.getRankTitle = GameModule.getRankTitle;
 window.getEndGameMessage = GameModule.getEndGameMessage;
 window.processWeeklyCosts = GameModule.processWeeklyCosts;
-window.processMonthlySalaries = GameModule.processMonthlySalaries;
+window.processWeeklySalaries = GameModule.processWeeklySalaries; // Updated
 window.resetDailyHours = GameModule.resetDailyHours;
 window.resetWeeklyHours = GameModule.resetWeeklyHours;
 window.handleGameEnd = GameModule.handleGameEnd;

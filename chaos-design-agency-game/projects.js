@@ -85,42 +85,56 @@ const ProjectsModule = (function() {
 
         let burnoutChange = 0;
 
-        const assignedProjects = window.GameState.projects.filter(p => 
-            p.teamAssigned && Array.isArray(p.teamAssigned) && p.teamAssigned.includes('player')
-        ).length;
+        // BASE STRESS: Just existing and working creates stress (urgency for 12-week game)
+        // This ensures burnout builds up even with minimal work
+        burnoutChange += 0.5;
 
+        // FIX: Check phase-specific assignments instead of legacy project.teamAssigned
+        // Count projects where player is assigned to any phase
+        let assignedProjects = 0;
+        let crisisProjects = 0;
+        window.GameState.projects.forEach(project => {
+            if (!project.phases) return;
+            let playerAssignedToThisProject = false;
+            ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                const phase = project.phases[phaseName];
+                if (phase && phase.teamAssigned && phase.teamAssigned.includes('player')) {
+                    playerAssignedToThisProject = true;
+                }
+            });
+            if (playerAssignedToThisProject) {
+                assignedProjects++;
+                if (project.status === 'crisis') {
+                    crisisProjects++;
+                }
+            }
+        });
+
+        // INCREASED RATES: 3x multiplier for urgency (game is only 12 weeks)
         if (assignedProjects > 0) {
-            burnoutChange += assignedProjects * 2;
+            burnoutChange += assignedProjects * 6; // Was 2, now 6 (3x)
         }
 
+        // More punishing for low hours (exhaustion)
         if (player.hours < 4) {
-            burnoutChange += 1;
+            burnoutChange += 2; // Was 1, now 2 (2x)
+        } else if (player.hours < 6) {
+            burnoutChange += 1; // Moderate exhaustion
         }
-
-        const crisisProjects = window.GameState.projects.filter(p => 
-            p.status === 'crisis' && p.teamAssigned && Array.isArray(p.teamAssigned) && p.teamAssigned.includes('player')
-        ).length;
         if (crisisProjects > 0) {
-            burnoutChange += crisisProjects * 3;
+            burnoutChange += crisisProjects * 9; // Was 3, now 9 (3x)
         }
 
+        // Low morale is more stressful
         if (window.GameState.teamMorale < 50) {
-            burnoutChange += 1;
+            burnoutChange += 2; // Was 1, now 2 (2x)
+        } else if (window.GameState.teamMorale < 70) {
+            burnoutChange += 0.5; // Moderate stress from low morale
         }
 
-        // Burnout reduction conditions - these can stack (independent if statements)
-        // When no projects assigned, rest reduces burnout more (mutually exclusive)
-        if (assignedProjects === 0 && player.hours >= 7) {
-            burnoutChange -= 3;
-        } else if (assignedProjects === 0 && player.hours >= 6) {
-            burnoutChange -= 2;
-        } else if (assignedProjects === 0 && player.hours >= 5) {
-            burnoutChange -= 1;
-        }
-        // When only 1 project assigned and well-rested, small reduction
-        if (assignedProjects === 1 && player.hours >= 7) {
-            burnoutChange -= 2;
-        }
+        // NOTE: Burnout reduction ONLY happens through conversation choices, not automatically
+        // Removed automatic rest-based burnout reduction - burnout should only decrease
+        // through specific conversation decisions
 
         // Scale the change to tick rate
         burnoutChange *= tickMultiplier;
@@ -823,6 +837,12 @@ const ProjectsModule = (function() {
             // Mike on 3 active phases: 33% time per phase (0.33)
             const timeFraction = 1 / totalActivePhaseAssignments;
             
+            // TRACK WEEKLY HOURS FOR PAYROLL
+            // 0.1 is HOURS_PER_TICK (defined below, but hardcoded here for consistency)
+            if (!member.weeklyPhaseHours) member.weeklyPhaseHours = {};
+            if (!member.weeklyPhaseHours[phaseName]) member.weeklyPhaseHours[phaseName] = 0;
+            member.weeklyPhaseHours[phaseName] += (0.1 * timeFraction);
+            
             // Handle overtime penalty for non-players
             let overtimePenalty = 1.0;
             if (member.id !== 'player' && member.hours < 0) {
@@ -1091,9 +1111,58 @@ const ProjectsModule = (function() {
         const oldStatus = project.status;
         project.status = status;
 
+            // PENALTY 1: First-time overdue penalties
             if (oldStatus !== 'crisis' && status === 'crisis') {
                 window.GameState.gameStats.deadlinesMissed++;
                 window.recordKeyMoment('Project Crisis!', `${project.name} is in crisis`, 'crisis');
+                
+                // PENALTY 2: Team morale hit when project goes overdue
+                if (project.weeksRemaining < 0 && !project.overdueNotified) {
+                    project.overdueNotified = true;
+                    const assignedMembers = window.GameState.team.filter(m => 
+                        (m.assignedProjects && m.assignedProjects.includes(project.id)) || 
+                        (m.currentAssignment === project.id)
+                    );
+                    assignedMembers.forEach(member => {
+                        window.adjustMemberMorale(member, -10);
+                    });
+                    window.recalculateTeamMorale();
+                    
+                    window.GameState.conversationHistory.push({
+                        title: `⚠️ Deadline Missed: ${project.name}`,
+                        message: `${project.name} is now overdue. Team morale has dropped. Client is losing patience.`,
+                        type: 'warning',
+                        timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
+                    });
+                }
+            }
+            
+            // PENALTY 1: Daily satisfaction penalty for overdue projects (HARSH)
+            if (project.weeksRemaining < 0) {
+                const daysOverdue = Math.abs(project.weeksRemaining) * 7;
+                const dailyPenalty = 5; // -5% satisfaction per day overdue
+                
+                if (!project._lastOverduePenaltyDay || project._lastOverduePenaltyDay !== window.GameState.currentDay) {
+                    project.satisfaction = Math.max(0, project.satisfaction - dailyPenalty);
+                    project._lastOverduePenaltyDay = window.GameState.currentDay;
+                }
+                
+                // PENALTY 4: Automatic scope reduction if severely overdue (>2 weeks)
+                if (daysOverdue > 14 && !project.scopeReduced) {
+                    project.scopeReduced = true;
+                    const originalBudget = project.budget;
+                    project.budget = Math.round(project.budget * 0.7); // 30% budget cut
+                    project.estimatedHours = Math.round(project.estimatedHours * 0.8); // 20% scope cut
+                    
+                    window.GameState.conversationHistory.push({
+                        title: `🚨 Scope Cut: ${project.name}`,
+                        message: `${project.client} has cut features and budget due to severe delays. Budget reduced from $${originalBudget.toLocaleString()} to $${project.budget.toLocaleString()}.`,
+                        type: 'error',
+                        timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
+                    });
+                    
+                    window.recordKeyMoment('Scope Reduction', `${project.name}: Client cut budget by 30% due to delays`, 'crisis');
+                }
             }
 
             if (project.weeksRemaining < 0 && project.satisfaction < 20 && !project.failureLogged) {
@@ -1148,7 +1217,24 @@ const ProjectsModule = (function() {
 
         const budget = project.budget || 5000;
         const satisfactionMultiplier = project.satisfaction / 100;
-        const payment = Math.round(budget * satisfactionMultiplier);
+        let payment = Math.round(budget * satisfactionMultiplier);
+        
+        // PENALTY 5: Late fee deduction if completed after deadline
+        let lateFee = 0;
+        if (project.weeksRemaining < 0) {
+            const weeksLate = Math.abs(project.weeksRemaining);
+            lateFee = Math.round(budget * 0.1 * weeksLate); // 10% per week late
+            lateFee = Math.min(lateFee, payment * 0.5); // Cap at 50% of payment
+            payment = Math.max(0, payment - lateFee);
+            
+            window.GameState.conversationHistory.push({
+                title: `💸 Late Fee Applied: ${project.name}`,
+                message: `${project.client} deducted $${lateFee.toLocaleString()} in late fees (${Math.round(weeksLate * 7)} days overdue). Payment reduced to $${payment.toLocaleString()}.`,
+                type: 'warning',
+                timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
+            });
+        }
+        
         window.GameState.money += payment;
 
         if (!window.GameState.portfolio) {
@@ -1186,10 +1272,15 @@ const ProjectsModule = (function() {
 
         window.celebrateProjectCompletion(project.name);
 
+        let completionMessage = `You've completed ${project.name} for ${project.client}. Payment received: $${payment.toLocaleString()} (${Math.round(satisfactionMultiplier * 100)}% of budget)`;
+        if (lateFee > 0) {
+            completionMessage += ` - Late fees: $${lateFee.toLocaleString()}`;
+        }
+        
         window.GameState.conversationHistory.push({
             title: `Project Completed: ${project.name}`,
-            message: `You've completed ${project.name} for ${project.client}. Payment received: $${payment.toLocaleString()} (${Math.round(satisfactionMultiplier * 100)}% of budget)`,
-            type: 'success',
+            message: completionMessage,
+            type: lateFee > 0 ? 'warning' : 'success',
             timestamp: `Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`
         });
 
@@ -1600,7 +1691,9 @@ const ProjectsModule = (function() {
         }
 
         const oldBurnout = player.burnout || 0;
-        const burnoutReduction = Math.min(25, oldBurnout);
+        // REDUCED RELIEF: Reduced from 25 to 15 for urgency (40% reduction)
+        // Taking a sick day helps, but doesn't completely solve burnout
+        const burnoutReduction = Math.min(15, oldBurnout);
         
         // Use centralized burnout adjustment
         if (window.adjustBurnout && burnoutReduction > 0) {

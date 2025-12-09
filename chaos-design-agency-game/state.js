@@ -329,13 +329,14 @@ const GameStateModule = (function() {
     }
 
     /**
-     * Calculate overtime burnout (5% per hour)
+     * Calculate overtime burnout (10% per hour - more punishing for urgency)
      */
     function calculateOvertimeBurnout(memberId, overtimeHours) {
         const member = GameState.team.find(m => m.id === memberId);
         if (!member || !overtimeHours || overtimeHours <= 0) return 0;
         
-        const burnoutIncrease = overtimeHours * 0.05; // 5% per hour
+        // Increased from 5% to 10% per hour - overtime is dangerous in a 12-week game
+        const burnoutIncrease = overtimeHours * 0.10; // 10% per hour (was 5%)
         
         return adjustBurnout(
             memberId, 

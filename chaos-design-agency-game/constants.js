@@ -15,12 +15,22 @@ const GameConstants = {
     BASE_HOURS_PER_DAY: 8,
     
     // Economics
-    WEEKLY_PAYROLL_PER_MEMBER: 600, // Deprecated - use monthly instead
+    WEEKLY_PAYROLL_PER_MEMBER: 600, // Deprecated
     WEEKLY_OVERHEAD: 300,
-    MONTHLY_SALARY_PER_MEMBER: 2000, // Monthly salary per employee
-    MONTHLY_OVERHEAD: 1200, // Monthly overhead (rent, utilities, etc.)
+    MONTHLY_SALARY_PER_MEMBER: 2000, // Deprecated - now using hourly rates
+    MONTHLY_OVERHEAD: 1200, // Deprecated - using WEEKLY_OVERHEAD
     WEEKS_PER_MONTH: 4,
     BANKRUPTCY_THRESHOLD: -5000,
+    
+    // Hourly Rates (EUR)
+    HOURLY_RATES: {
+        MANAGER: 50,
+        DESIGNER: 25,
+        DEVELOPER: 30,
+        DEFAULT: 25
+    },
+    PLAYER_WEEKLY_SALARY: 1000,
+    MIN_WEEKLY_PAY: 100,
     
     // Morale
     LOW_MORALE_THRESHOLD: 25,

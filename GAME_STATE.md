@@ -78,11 +78,11 @@ Centralized configuration constants used throughout the game. All code should re
 - `QUIT_MORALE_THRESHOLD: 5` - Team member quits
 - `BURNOUT_MORALE_THRESHOLD: 10` - Used in failure condition checks
 
-**Economics:**
-- `MONTHLY_SALARY_PER_MEMBER: 2000` - Monthly salary per employee
-- `MONTHLY_OVERHEAD: 1200` - Monthly overhead costs
-- `FIRST_PAYROLL_WEEK: 5` - First payroll period (after 4-week grace)
-- `WEEKS_PER_MONTH: 4` - Payroll frequency
+**Economics (weekly payroll):**
+- `HOURLY_RATES`: { Manager: €50, Designer: €25, Developer: €30, Default: €25 }
+- `MIN_WEEKLY_PAY: €100` - Minimum per worker per week
+- `PLAYER_WEEKLY_SALARY: €1000` (if funds available)
+- `WEEKLY_OVERHEAD: €300`
 - `BANKRUPTCY_THRESHOLD: -5000` - Game over threshold
 
 **Project Management:**
@@ -552,7 +552,7 @@ AllProjectTemplates: ProjectTemplate[] // All project templates
 18. Check for conversations (`checkForConversations()`) - Marks conversations as shown
 18. Check for contextual tips (`checkForContextualTips()`)
 19. If day 7: check team pulse, show week summary, generate weekly client feedback
-20. If day 1: process monthly salaries (`processMonthlySalaries()`)
+20. **Weekly Payroll:** Process weekly salaries (`processWeeklySalaries`) at week transition (Day 7 → 1)
 21. Check project deadlines (`checkProjectDeadlines()`)
 22. Update game stats (`updateGameStats()`)
 23. Save to localStorage
@@ -697,21 +697,22 @@ Different mechanics for player vs. workers:
 ### Player Burnout System (`updatePlayerBurnout()`)
 - **Location:** `projects.js`
 - **Daily Update:** Called after projects update each day
-- **Burnout Increases:**
-  - `+2` per assigned project
-  - `+1` if hours < 4
-  - `+3` per crisis project assigned to
-  - `+1` if team morale < 50
+- **Phase-Aware:** Counts player assignments from `phase.teamAssigned` (legacy `project.teamAssigned` is deprecated)
+- **Burnout Increases (more urgent for 12-week game):**
+  - Base stress: `+0.5` per tick
+  - `+6` per project where player is assigned to any phase
+  - `+2` if hours < 4, `+1` if hours < 6
+  - `+9` per crisis project where player is assigned
+  - `+2` if team morale < 50; `+0.5` if morale < 70
 - **Burnout Decreases:**
-  - `-3` if unassigned and hours ≥ 7
-  - `-2` if unassigned and hours ≥ 6
-  - `-1` if unassigned and hours ≥ 5
-  - `-2` if 1 project assigned and hours ≥ 7
+  - Only via conversation consequences (`playerBurnout`), or calling in sick
+  - Conversation burnout relief is reduced (40% less effective than stated value)
+  - Call in sick: reduces up to 15 (was 25)
 - **Thresholds:**
   - `≥80%`: Triggers "Art Director Burnout Warning" key moment
   - `≥60%`: Some conversation choices become unavailable
   - `≥90%`: Higher chance of making poor decisions in conversations
-- **Recovery:** Player can call in sick (`callInSick()`) to reduce burnout by 30-50%
+- **Overtime Burnout:** `calculateOvertimeBurnout()` now 10% per overtime hour (was 5%)
 
 ### Illness System (`checkForIllness()`)
 - **Location:** `projects.js`
@@ -739,21 +740,34 @@ Different mechanics for player vs. workers:
   - `< 55%`: Negative feedback, `-4` morale to assigned team
 - Adds entry to `conversationHistory`
 
-### Monthly Salaries Processing (`processMonthlySalaries()`)
+### Weekly Payroll Processing (`processWeeklySalaries()`)
 - **Location:** `game.js`
-- **Runs:** At start of each new month (day 1 of weeks 5, 9, etc.)
-- **First Payroll:** Week 5 (after 4 weeks of grace period)
-- **Frequency:** Every 4 weeks (weeks 5, 9)
+- **Runs:** Every week at transition from Day 7 to Day 1 (End of Week)
 - **Calculation:**
-  - Monthly salary: `MONTHLY_SALARY_PER_MEMBER` (default $2,000) × active employees
-  - Monthly overhead: `MONTHLY_OVERHEAD` (default $1,200)
-  - Total: `(employees × $2,000) + $1,200`
+  - **Workers:** `sum(hours_on_phase × rate × phase_efficiency)` per worker
+  - **Minimum:** Workers guaranteed €100 minimum weekly pay
+  - **Player:** Fixed €1,000 weekly salary (if funds available)
+  - **Overhead:** Fixed `WEEKLY_OVERHEAD` (default €300)
 - **Deducts** from `GameState.money`
-- **Adds** cost entry to `conversationHistory`
-- **Records** "Low on Cash" key moment if money < $1,000
-- **Example:** With 2 employees: $5,200/month (paid at weeks 5 and 9)
-- **Total over 12 weeks:** ~$10,400 in costs (2 payroll periods)
-- **Note:** `processWeeklyCosts()` exists for backward compatibility but is deprecated (no-op function)
+- **Adds** detailed cost entry to `conversationHistory`
+- **Records** "Low on Cash" key moment if money < €1,000
+- **Resets** `weeklyPhaseHours` tracking for next week
+- **Note:** `processMonthlySalaries()` is deprecated and removed
+
+### Project Completion Penalties (Late Fees)
+- **Location:** `projects.js` (`completeProject`)
+- **Rule:** If completed after deadline (`weeksRemaining < 0`), apply late fee:
+  - 10% of budget per late week, capped at 50% of payment
+  - Payment is reduced accordingly
+  - Logs warning entry to `conversationHistory`
+
+### Reputation Budget Penalty (New Projects)
+- **Location:** `conversations.js` (project spawn)
+- **Rule:** Budgets for new projects scale down based on deadline miss ratio:
+  - Miss ratio ≥ 50%: budget × 0.7
+  - Miss ratio ≥ 30%: budget × 0.85
+  - Miss ratio ≥ 10%: budget × 0.95
+  - Logs warning and adjusted budget in `conversationHistory`
 
 ### Game Phase Updates (`updateGamePhase()`)
 - Called at start of each new week
@@ -1114,19 +1128,25 @@ Five major scripted events create difficulty curve:
 - **Team Size:** 3 (player + 2 employees)
 - **Team Morale:** `DEFAULT_STARTING_MORALE` (default 75%)
 
-### Monthly Costs
-- **Payroll:** `MONTHLY_SALARY_PER_MEMBER` (default $2,000) per employee
-- **Overhead:** `MONTHLY_OVERHEAD` (default $1,200)
-- **First Payroll:** Week 5 (after 4-week grace period)
-- **Frequency:** Every 4 weeks (weeks 5, 9)
-- **Default Total:** $5,200/month with 2 employees
+### Weekly Costs
+- **Weekly Payroll:** Based on hours worked × rate × efficiency
+- **Hourly Rates:**
+  - Manager: €50/hr
+  - Developer: €30/hr
+  - Designer: €25/hr
+- **Minimum Pay:** €100/week per worker
+- **Player Salary:** €1,000/week (fixed)
+- **Overhead:** `WEEKLY_OVERHEAD` (default €300)
+- **Frequency:** Every week (Day 7 end)
+- **Default Total:** Variable based on workload + €1,300 fixed (Player + Overhead)
 
 ### 12-Week Economics
-- **Total Costs:** ~$10,400 (2 payroll periods: weeks 5 and 9)
-- **Break Even:** Need ~$10,000 net income
-- **Survivor Target:** ~$20,000 total income
-- **Professional Target:** ~$28,000 total income
-- **Rockstar Target:** ~$43,000 total income
+- **Total Fixed Costs:** €15,600 (Player + Overhead for 12 weeks)
+- **Variable Costs:** Depends on team size and workload
+- **Break Even:** Need ~€20,000+ net income
+- **Survivor Target:** ~€30,000 total income
+- **Professional Target:** ~€40,000 total income
+- **Rockstar Target:** ~€60,000 total income
 
 ### Project Economics
 - **Budget Range:** $5,000 - $15,000
@@ -1209,6 +1229,28 @@ Potential additions for future versions:
 - **Implementation**: `phase.teamAssigned` arrays, phase-specific progress calculation
 - **UI**: 4-column phase assignment modal, updated project/worker cards
 - **Location**: `projects.js` - `updatePhaseProgress()`, `assignTeamMemberToPhase()`, `ui.js` - `showPhaseAssignmentModal()`
+
+### Burnout Rebalance & Phase Awareness (Latest)
+- **Feature**: Burnout now reads phase assignments (not legacy project.teamAssigned) and is more urgent
+- **Increases**: Base +0.5/tick, +6 per assigned project (via phases), +9 per crisis project, +2/+1 for low hours, morale stress (+2 / +0.5)
+- **Relief**: Only via conversations (40% reduced relief) or call in sick (max 15). Overtime burnout is 10% per hour.
+- **Location**: `projects.js` - `updatePlayerBurnout()`, `state.js` - `calculateOvertimeBurnout()`
+
+### Team Events Phase-Aware (Latest)
+- **Feature**: Personality events (perfectionist/pragmatic/eager) and conflict checks now use phase assignments
+- **Compatibility**: Legacy `currentAssignment`/`assignedProjects` still read as fallback
+- **Location**: `conversations.js` - `checkTeamEvents()`
+
+### Inbox-Style Messages UI (Latest)
+- **Feature**: Messages panel now mimics an email inbox with list + detail panes
+- **List Pane**: Inbox header, filters (All/Unread), search stub, message cards with urgency icons, tags/pills, preview
+- **Detail Pane**: Conversation with sender, subject, deadline badge, choices with consequence icons
+- **Location**: `ui.js` (messages render), `styles.css` (inbox layout)
+
+### Economic Penalties (Latest)
+- **Late Fees**: 10% of budget per late week (capped at 50%) deducted on completion if `weeksRemaining < 0`
+- **Reputation Budget Cuts**: New project budgets scale down based on deadline miss ratio (0.95 / 0.85 / 0.7)
+- **Location**: `projects.js` (`completeProject`), `conversations.js` (project spawn)
 
 ### Hours Exhaustion System (Latest)
 - **Feature**: Different mechanics for player (can go negative) vs workers (stop at 0)

@@ -280,22 +280,22 @@
   {
     "id": "new_project_inquiry",
     "week": 2,
-    "day": 5,
+    "day": 2,
     "urgency": "medium",
-    "from": "Client Contact",
+    "from": "Rebel Supply Co.",
     "subject": "Time to make sustainability sexy",
-    "body": "We need a complete rebrand + website that proves eco-friendly doesn't have to mean boring. $25k budget, 10 weeks. Ready to make fast fashion nervous? Our current brand looks like it was designed by accountants who hate fun.",
+    "body": "We need a complete rebrand + website that proves eco-friendly doesn't have to mean boring. $12k budget, 4 weeks. Ready to make fast fashion nervous? Our current brand looks like it was designed by accountants who hate fun.",
     "choices": [
       {
         "id": "choice_accept_new",
         "text": "Absolutely - let's make sustainability irresistible",
         "consequences": {
-          "money": 5000,
+          "money": 2400,
           "teamMorale": 5,
           "spawnConversations": [],
           "addProject": { "templateId": "greenleaf_rebrand" }
         },
-        "flavorText": "They grin: 'Finally! Someone who gets it.' A $5k deposit arrives immediately. This is going to be fun."
+        "flavorText": "They grin: 'Finally! Someone who gets it.' A $2.4k deposit arrives immediately. This is going to be fun."
       },
       {
         "id": "choice_decline_politely",
@@ -1570,12 +1570,12 @@
   },
   {
     "id": "new_project_request_enterprise",
-    "week": 0,
-    "day": 0,
+    "week": 6,
+    "day": 3,
     "urgency": "medium",
-    "from": "Client Contact",
+    "from": "Stealth Capital Ventures",
     "subject": "New project inquiry - Command Deck",
-      "body": "We've heard great things about your work. We need a comprehensive command deck application. $15k budget, 11 weeks timeline. Interested?",
+      "body": "We've heard great things about your work. We need a comprehensive command deck application. $15k budget, 4 weeks timeline. Interested?",
     "choices": [
       {
         "id": "choice_accept_enterprise",
@@ -1607,7 +1607,7 @@
     "urgency": "medium",
     "from": "Client Contact",
     "subject": "Website project inquiry",
-      "body": "We're a small business looking for a whimsical website. $3.5k budget, 5 weeks. A friend recommended you. Available?",
+      "body": "We're a small business looking for a whimsical website. $3.5k budget, 2 weeks. A friend recommended you. Available?",
     "choices": [
       {
         "id": "choice_accept_small_business",
@@ -1634,12 +1634,12 @@
   },
   {
     "id": "new_project_request_startup",
-    "week": 0,
-    "day": 0,
+    "week": 4,
+    "day": 2,
     "urgency": "medium",
     "from": "Velocity Labs",
     "subject": "Startup branding project",
-      "body": "We're a new tech startup. Need a complete brand identity and website. $7k budget, 8 weeks. Can you help us launch?",
+      "body": "We're a new tech startup. Need a complete brand identity and website. $7k budget, 3 weeks. Can you help us launch?",
     "choices": [
       {
         "id": "choice_accept_startup",
@@ -1661,6 +1661,166 @@
           "spawnConversations": []
         },
         "flavorText": "You decline. They move on to find another agency."
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_luxury_campaign",
+    "week": 3,
+    "day": 5,
+    "urgency": "medium",
+    "from": "Velvet Rebellion Co.",
+    "subject": "Luxury controversy campaign inquiry",
+    "body": "We're looking to make waves with a luxury campaign that makes people uncomfortable (in a good way). $18k budget, 3 weeks. Think you can handle making expensive things look rebellious?",
+    "choices": [
+      {
+        "id": "choice_accept_luxury",
+        "text": "Absolutely - controversy is our specialty",
+        "consequences": {
+          "money": 3600,
+          "teamMorale": 7,
+          "spawnConversations": [],
+          "addProject": { "templateId": "luxury_controversy_campaign" }
+        },
+        "flavorText": "They grin: 'Perfect. Let's make luxury dangerous again.' A $3.6k deposit arrives. This will be fun."
+      },
+      {
+        "id": "choice_decline_luxury",
+        "text": "Not our style right now - portfolio's full",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -1,
+          "spawnConversations": []
+        },
+        "flavorText": "They nod: 'Fair enough. We need someone who's all-in on this vision.'"
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_minimalist_website",
+    "week": 5,
+    "day": 4,
+    "urgency": "medium",
+    "from": "Paradox Studio",
+    "subject": "Minimalist maximalism project",
+    "body": "We want a website that's simultaneously simple and complex. I know it doesn't make sense - that's exactly the point. $8.5k budget, 2 weeks. Can you make contradictions beautiful?",
+    "choices": [
+      {
+        "id": "choice_accept_minimalist",
+        "text": "Yes - contradiction is art",
+        "consequences": {
+          "money": 1700,
+          "teamMorale": 5,
+          "spawnConversations": [],
+          "addProject": { "templateId": "minimalist_maximalism_website" }
+        },
+        "flavorText": "They beam: 'You get it! This is going to be beautifully confusing.' Deposit received."
+      },
+      {
+        "id": "choice_decline_minimalist",
+        "text": "Too abstract for our current workload",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 0,
+          "spawnConversations": []
+        },
+        "flavorText": "They understand: 'Not everyone thinks in paradoxes. We'll find our people.'"
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_spirits_brand",
+    "week": 7,
+    "day": 2,
+    "urgency": "medium",
+    "from": "Blackwater Distillery",
+    "subject": "Craft spirits branding inquiry",
+    "body": "We make spirits for people with opinions. Need branding that looks dangerous on a shelf. $19k budget, 3 weeks. Think you can make bottles look like they bite back?",
+    "choices": [
+      {
+        "id": "choice_accept_spirits",
+        "text": "Hell yes - let's make something with character",
+        "consequences": {
+          "money": 3800,
+          "teamMorale": 6,
+          "spawnConversations": [],
+          "addProject": { "templateId": "artisan_spirits_brand" }
+        },
+        "flavorText": "They laugh: 'Now we're talking. This is gonna be rough around the edges - in the best way.' Deposit lands."
+      },
+      {
+        "id": "choice_decline_spirits",
+        "text": "Portfolio's at capacity",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -1,
+          "spawnConversations": []
+        },
+        "flavorText": "They respect the boundary: 'Fair. We need someone who can give this full attention anyway.'"
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_hotel_experience",
+    "week": 9,
+    "day": 1,
+    "urgency": "medium",
+    "from": "The Velvet Underground Hotel",
+    "subject": "Provocative hospitality website",
+    "body": "We're a boutique hotel that treats luxury like performance art. Need a website that makes people feel something. $24k budget, 4 weeks. Ready to make hospitality rebellious?",
+    "choices": [
+      {
+        "id": "choice_accept_hotel",
+        "text": "Absolutely - this sounds incredible",
+        "consequences": {
+          "money": 4800,
+          "teamMorale": 8,
+          "spawnConversations": [],
+          "addProject": { "templateId": "boutique_hotel_experience" }
+        },
+        "flavorText": "They're thrilled: 'Perfect. We need someone who understands that hospitality can be art.' Big deposit arrives."
+      },
+      {
+        "id": "choice_decline_hotel",
+        "text": "Timeline's too tight with current projects",
+        "consequences": {
+          "money": 0,
+          "teamMorale": -2,
+          "spawnConversations": []
+        },
+        "flavorText": "They're disappointed but understanding: 'Quality over quantity. We get it.'"
+      }
+    ]
+  },
+  {
+    "id": "new_project_request_restaurant_brand",
+    "week": 10,
+    "day": 4,
+    "urgency": "medium",
+    "from": "The Black Kitchen",
+    "subject": "Anti-establishment culinary branding",
+    "body": "We serve Michelin-quality food with punk rock attitude. Need branding that makes fine dining feel rebellious. $21k budget, 4 weeks. Can you make culinary excellence look dangerous?",
+    "choices": [
+      {
+        "id": "choice_accept_restaurant",
+        "text": "Yes - fine dining needs this rebellion",
+        "consequences": {
+          "money": 4200,
+          "teamMorale": 7,
+          "spawnConversations": [],
+          "addProject": { "templateId": "underground_restaurant_concept" }
+        },
+        "flavorText": "They grin: 'Exactly what we wanted to hear. Let's make reservations feel like joining a revolution.' Deposit sent."
+      },
+      {
+        "id": "choice_decline_restaurant",
+        "text": "End-game crunch - can't take more",
+        "consequences": {
+          "money": 0,
+          "teamMorale": 0,
+          "spawnConversations": []
+        },
+        "flavorText": "They nod: 'Respect for knowing your limits. That's rare in this industry.'"
       }
     ]
   },

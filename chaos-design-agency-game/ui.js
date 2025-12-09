@@ -26,13 +26,7 @@ const UIModule = (function() {
         bar.className = 'day-progress-bar';
         bar.id = 'dayProgressBar';
         
-        const label = document.createElement('div');
-        label.className = 'day-progress-label';
-        label.id = 'dayProgressLabel';
-        label.textContent = '9:00 AM';
-        
         container.appendChild(bar);
-        container.appendChild(label);
         targetContainer.appendChild(container);
         
         console.log('Day progress bar initialized in time block');
@@ -48,7 +42,7 @@ const UIModule = (function() {
                 indicator.id = 'clockPauseIndicator';
                 indicator.className = 'clock-pause-indicator';
                 
-                const header = document.querySelector('.main-content-header');
+                const header = document.querySelector('.messages-header') || document.querySelector('.main-content-header');
                 if (header) {
                     header.appendChild(indicator);
                 }
@@ -237,8 +231,48 @@ const UIModule = (function() {
     const container = document.getElementById('projectsContainer');
     container.innerHTML = '';
 
+        // Add tutorial hint if not already present
+        let tutorialHint = container.previousElementSibling;
+        if (!tutorialHint || !tutorialHint.classList.contains('section-tutorial-hint')) {
+            tutorialHint = document.createElement('div');
+            tutorialHint.className = 'section-tutorial-hint';
+            tutorialHint.innerHTML = `
+                <div class="tutorial-hint-header">
+                    <span class="tutorial-hint-icon">💡</span>
+                    <span class="tutorial-hint-title">How Projects Work</span>
+                    <button class="tutorial-hint-toggle" aria-label="Toggle tutorial">▼</button>
+                </div>
+                <div class="tutorial-hint-content">
+                    <p><strong>📋 Phases:</strong> Projects have 4 phases (Management → Design → Development → Review). Each phase must reach 50% before the next starts.</p>
+                    <p><strong>👥 Assignments:</strong> Click "Assign to Phases" to assign workers to specific phases. Workers only contribute to assigned phases.</p>
+                    <p><strong>⚠️ Warnings:</strong> Projects without team on active phases won't progress. Assign workers to keep projects moving!</p>
+                </div>
+            `;
+            const projectTimeline = container.closest('.project-timeline');
+            if (projectTimeline) {
+                projectTimeline.insertBefore(tutorialHint, container);
+            }
+            
+            // Toggle functionality
+            const toggleBtn = tutorialHint.querySelector('.tutorial-hint-toggle');
+            const content = tutorialHint.querySelector('.tutorial-hint-content');
+            if (toggleBtn && content) {
+                let isExpanded = localStorage.getItem('projectsTutorialExpanded') !== 'false';
+                if (!isExpanded) {
+                    content.style.display = 'none';
+                    toggleBtn.textContent = '▶';
+                }
+                toggleBtn.addEventListener('click', () => {
+                    isExpanded = content.style.display !== 'none';
+                    content.style.display = isExpanded ? 'none' : 'block';
+                    toggleBtn.textContent = isExpanded ? '▶' : '▼';
+                    localStorage.setItem('projectsTutorialExpanded', !isExpanded);
+                });
+            }
+        }
+
         if (window.GameState.projects.length === 0) {
-            container.innerHTML = '<p style="color: #999; font-style: italic;">No active projects</p>';
+            container.innerHTML = '<p style="color: #999; font-weight: 600;">No active projects</p>';
             return;
         }
 
@@ -272,7 +306,8 @@ const UIModule = (function() {
         .filter(Boolean);
     const teamAvatars = assignedMembers.map(m => {
         const initials = m.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-        return `<span class="team-avatar" title="${m.name}">${initials}</span>`;
+        const roleIcon = m.role ? (m.role.toLowerCase() === 'manager' ? '👔' : m.role.toLowerCase() === 'designer' ? '🎨' : '💻') : '👥';
+        return `<span class="team-avatar" title="${m.name}">${roleIcon} ${initials}</span>`;
     }).join('');
     const hasTeam = assignedMembers.length > 0;
 
@@ -492,8 +527,49 @@ const UIModule = (function() {
     const container = document.getElementById('teamContainer');
     container.innerHTML = '';
 
+        // Add tutorial hint if not already present
+        let tutorialHint = container.previousElementSibling;
+        if (!tutorialHint || !tutorialHint.classList.contains('section-tutorial-hint')) {
+            tutorialHint = document.createElement('div');
+            tutorialHint.className = 'section-tutorial-hint';
+            tutorialHint.innerHTML = `
+                <div class="tutorial-hint-header">
+                    <span class="tutorial-hint-icon">💡</span>
+                    <span class="tutorial-hint-title">How Team Management Works</span>
+                    <button class="tutorial-hint-toggle" aria-label="Toggle tutorial">▼</button>
+                </div>
+                <div class="tutorial-hint-content">
+                    <p><strong>⏰ Hours:</strong> Each worker has 40 hours/week. Hours are deducted when working on active phases. Workers stop at 0 hours (you can go negative).</p>
+                    <p><strong>💰 Payroll:</strong> Workers are paid weekly based on hours worked × rate × efficiency. Minimum €100/week per worker.</p>
+                    <p><strong>😊 Morale:</strong> Low morale workers may quit. Keep them happy by managing workload and responding to conversations.</p>
+                    <p><strong>📋 Assignments:</strong> Workers show projects they're assigned to. Click project cards to assign workers to specific phases.</p>
+                </div>
+            `;
+            const teamSection = container.closest('.team-section');
+            if (teamSection) {
+                teamSection.insertBefore(tutorialHint, container);
+            }
+            
+            // Toggle functionality
+            const toggleBtn = tutorialHint.querySelector('.tutorial-hint-toggle');
+            const content = tutorialHint.querySelector('.tutorial-hint-content');
+            if (toggleBtn && content) {
+                let isExpanded = localStorage.getItem('teamTutorialExpanded') !== 'false';
+                if (!isExpanded) {
+                    content.style.display = 'none';
+                    toggleBtn.textContent = '▶';
+                }
+                toggleBtn.addEventListener('click', () => {
+                    isExpanded = content.style.display !== 'none';
+                    content.style.display = isExpanded ? 'none' : 'block';
+                    toggleBtn.textContent = isExpanded ? '▶' : '▼';
+                    localStorage.setItem('teamTutorialExpanded', !isExpanded);
+                });
+            }
+        }
+
         if (window.GameState.team.length === 0) {
-            container.innerHTML = '<p style="color: #999; font-style: italic;">No team members available</p>';
+            container.innerHTML = '<p style="color: #999; font-weight: 600;">No team members available</p>';
             return;
         }
 
@@ -696,7 +772,8 @@ const UIModule = (function() {
         
         // Update label text
         const displayHours = Math.round((member.hours || 0) * 10) / 10; // Round to 1 decimal, show actual (including negative)
-        label.textContent = `${displayHours}h / ${maxHours}h`;
+        const hourIcon = displayHours <= 0 ? '⏳' : (displayHours < 10 ? '⚡' : '⏱️');
+        label.textContent = `${hourIcon} ${displayHours}h / ${maxHours}h`;
         
         // Update special states
         if (member.hasQuit) {
@@ -783,6 +860,7 @@ const UIModule = (function() {
 
     function updateMainContent() {
     const conversationContainer = document.querySelector('.conversation-container');
+    const contentArea = document.getElementById('contentArea');
     
     if (window.currentConversation !== null && !conversationContainer) {
         window.currentConversation = null;
@@ -793,7 +871,53 @@ const UIModule = (function() {
         return;
     }
 
-    const contentArea = document.getElementById('contentArea');
+    // Add tutorial hint to content area when empty
+    if (contentArea && (!contentArea.innerHTML.trim() || contentArea.querySelector('.welcome-message'))) {
+        // Check if tutorial hint already exists
+        let existingHint = contentArea.querySelector('.content-tutorial-hint');
+        if (!existingHint) {
+            existingHint = document.createElement('div');
+            existingHint.className = 'content-tutorial-hint section-tutorial-hint';
+            existingHint.innerHTML = `
+                <div class="tutorial-hint-header">
+                    <span class="tutorial-hint-icon">💡</span>
+                    <span class="tutorial-hint-title">How the Game Works</span>
+                    <button class="tutorial-hint-toggle" aria-label="Toggle tutorial">▼</button>
+                </div>
+                <div class="tutorial-hint-content">
+                    <p><strong>📧 Conversations:</strong> Client messages appear here. Respond quickly to maintain satisfaction. Some have deadlines!</p>
+                    <p><strong>⏱️ Real-Time:</strong> The game runs in real-time (1 game hour = 1 real second). Time pauses during conversations.</p>
+                    <p><strong>📋 Projects:</strong> Assign workers to project phases via "Assign to Phases" button. Projects progress through phases sequentially.</p>
+                    <p><strong>💰 Money:</strong> Earn money by completing projects. Pay workers weekly based on hours worked. Watch your budget!</p>
+                    <p><strong>😊 Morale:</strong> Keep team morale high. Low morale workers may quit. Respond to conversations and manage workload.</p>
+                </div>
+            `;
+            const welcomeMsg = contentArea.querySelector('.welcome-message');
+            if (welcomeMsg) {
+                contentArea.insertBefore(existingHint, welcomeMsg);
+            } else {
+                contentArea.appendChild(existingHint);
+            }
+            
+            // Toggle functionality
+            const toggleBtn = existingHint.querySelector('.tutorial-hint-toggle');
+            const content = existingHint.querySelector('.tutorial-hint-content');
+            if (toggleBtn && content) {
+                let isExpanded = localStorage.getItem('contentTutorialExpanded') !== 'false';
+                if (!isExpanded) {
+                    content.style.display = 'none';
+                    toggleBtn.textContent = '▶';
+                }
+                toggleBtn.addEventListener('click', () => {
+                    isExpanded = content.style.display !== 'none';
+                    content.style.display = isExpanded ? 'none' : 'block';
+                    toggleBtn.textContent = isExpanded ? '▶' : '▼';
+                    localStorage.setItem('contentTutorialExpanded', !isExpanded);
+                });
+            }
+        }
+    }
+
     const activityFeed = document.getElementById('activityFeed');
     if (activityFeed) {
             const recentEvents = window.GameState.conversationHistory.slice(-5).reverse();
@@ -903,12 +1027,22 @@ const UIModule = (function() {
     const availableChoices = filterChoicesByBurnout(processedConversation.choices, playerBurnout);
     
     const contentArea = document.getElementById('contentArea');
-    const choicesHtml = availableChoices.map(choice => `
-        <button class="choice-btn" data-choice-id="${choice.id}">
-            <div class="choice-text">${choice.text}</div>
-            <div class="consequence-hint">${window.formatConsequences(choice.consequences)}</div>
-        </button>
-    `).join('');
+    const choicesHtml = availableChoices.map(choice => {
+        const cons = choice.consequences || {};
+        const icons = [];
+        if (cons.money) icons.push(cons.money > 0 ? '💰' : '💸');
+        if (cons.teamMorale) icons.push(cons.teamMorale > 0 ? '😊' : '😟');
+        if (cons.projectProgress) icons.push('📈');
+        if (cons.playerBurnout) icons.push(cons.playerBurnout < 0 ? '🧘' : '🔥');
+        if (cons.responseDeadlineHours) icons.push('⏳');
+        const iconStr = icons.length ? `<span class="choice-icons">${icons.join(' ')}</span>` : '';
+        return `
+            <button class="choice-btn" data-choice-id="${choice.id}">
+                <div class="choice-text">${iconStr} ${choice.text}</div>
+                <div class="consequence-hint">${window.formatConsequences(choice.consequences)}</div>
+            </button>
+        `;
+    }).join('');
     
     const burnoutWarning = playerBurnout >= 60 ? `
         <div class="burnout-warning">
@@ -916,19 +1050,67 @@ const UIModule = (function() {
         </div>
     ` : '';
 
-    contentArea.innerHTML = `
-        <div class="conversation-container urgency-${processedConversation.urgency}">
-            <div class="conversation-header">
-                <div class="conversation-from">${processedConversation.from || 'Client'}</div>
-                <div class="conversation-subject">${processedConversation.subject || 'Message'}</div>
-                ${processedConversation.responseDeadlineHours ? `<div class="response-timer">Reply within ${processedConversation.responseDeadlineHours}h</div>` : ''}
+    // Build inbox-style list (current + queued conversations)
+    const inboxItems = [];
+    inboxItems.push({ convo: processedConversation, status: 'active' });
+    const queuedIds = (window.GameState.conversationQueue || []).filter(id => id !== processedConversation.id);
+    queuedIds.forEach(id => {
+        const convo = (window.AllConversations || []).find(c => c.id === id);
+        if (convo) inboxItems.push({ convo, status: 'queued' });
+    });
+    const listItemsHtml = inboxItems.length ? inboxItems.map(item => {
+        const c = item.convo || {};
+        const preview = (c.body || '').replace(/<[^>]+>/g, '').slice(0, 120) || 'New message';
+        const urgencyIcon = c.urgency === 'high' ? '⚠️' : c.urgency === 'low' ? '⏳' : '✉️';
+        const deadline = c.responseDeadlineHours ? `<span class="message-pill">⏳ ${c.responseDeadlineHours}h</span>` : '';
+        const tag = c.topic ? `<span class="message-pill soft">#${c.topic}</span>` : '';
+        const cls = `message-item ${item.status === 'active' ? 'active' : ''}`;
+        return `
+            <div class="${cls}">
+                <div class="message-item-header">
+                    <div class="message-from">${urgencyIcon} ${c.from || 'Client'}</div>
+                    <div class="message-time">${deadline}</div>
+                </div>
+                <div class="message-subject">${c.subject || 'Message'}</div>
+                <div class="message-preview">${preview}</div>
+                <div class="message-tags">${deadline} ${tag}</div>
             </div>
-            <div class="conversation-body">${processedConversation.body}</div>
-            ${burnoutWarning}
-            <div class="conversation-choices">${choicesHtml}</div>
-            <div class="conversation-actions">
-                <button class="btn btn-secondary remind-btn">Remind me later</button>
-                <button class="btn btn-primary send-response-btn" disabled>Send Response</button>
+        `;
+    }).join('') : `<div class="message-empty">📭 Inbox is clear</div>`;
+
+    contentArea.innerHTML = `
+        <div class="messages-inbox">
+            <div class="messages-list-pane">
+                <div class="messages-list-header">
+                    <div class="messages-list-title">📥 Inbox</div>
+                    <div class="messages-list-filters">
+                        <span class="message-filter active">All</span>
+                        <span class="message-filter">Unread</span>
+                    </div>
+                </div>
+                <div class="messages-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Search messages" disabled aria-label="Search messages (coming soon)">
+                </div>
+                <div class="messages-list">
+                    ${listItemsHtml}
+                </div>
+            </div>
+            <div class="messages-detail-pane">
+                <div class="conversation-container urgency-${processedConversation.urgency}">
+                    <div class="conversation-header">
+                        <div class="conversation-from">👤 ${processedConversation.from || 'Client'}</div>
+                        <div class="conversation-subject">${processedConversation.subject || 'Message'}</div>
+                        ${processedConversation.responseDeadlineHours ? `<div class="response-timer">⏳ Reply within ${processedConversation.responseDeadlineHours}h</div>` : ''}
+                    </div>
+                    <div class="conversation-body">${processedConversation.body}</div>
+                    ${burnoutWarning}
+                    <div class="conversation-choices">${choicesHtml}</div>
+                    <div class="conversation-actions">
+                        <button class="btn btn-secondary remind-btn">🔔 Remind me later</button>
+                        <button class="btn btn-primary send-response-btn" disabled>Send Response</button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -953,6 +1135,16 @@ const UIModule = (function() {
                 e.stopPropagation();
                 const btn = e.target.closest('.send-response-btn');
                 if (btn && !btn.disabled) {
+                    // Double-check conversation is still active and not resolved
+                    const conversationId = processedConversation.id;
+                    if (window.GameState.resolvedConversations.includes(conversationId)) {
+                        console.warn('Conversation already resolved, ignoring click');
+                        return;
+                    }
+                    if (!window.currentConversation || window.currentConversation.id !== conversationId) {
+                        console.warn('Conversation mismatch, ignoring click');
+                        return;
+                    }
                     btn.disabled = true;
                     window.submitConversationChoice();
                 }
@@ -1081,13 +1273,13 @@ const UIModule = (function() {
         }
         
         const projectNames = unassignedProjects.map(p => p.name).join(', ');
-        warningBanner.innerHTML = `
+    warningBanner.innerHTML = `
             <div class="warning-icon">⚠️</div>
             <div class="warning-content">
-                <strong>Action Required!</strong>
+                <strong>⚠️ Action Required!</strong>
                 ${unassignedProjects.length} project${unassignedProjects.length > 1 ? 's' : ''} ha${unassignedProjects.length > 1 ? 've' : 's'} no team on active phases: <em>${projectNames}</em>
                 <br>
-                <span class="warning-subtext">Projects won't progress until you assign workers to specific phases. Click "Assign to Phases" on each project card.</span>
+                <span class="warning-subtext">🚧 Projects won't progress until you assign workers to specific phases. Click "Assign to Phases" on each project card.</span>
             </div>
             <button class="warning-dismiss" onclick="this.parentElement.style.display='none'">×</button>
         `;
@@ -1623,6 +1815,12 @@ Conversation History: ${window.GameState.conversationHistory.length}
         const phaseNames = ['management', 'design', 'development', 'review'];
         const phaseLabels = { management: 'Management', design: 'Design', development: 'Development', review: 'Review' };
         const phaseIcons = { management: '📋', design: '🎨', development: '💻', review: '✅' };
+        const phaseDescriptions = {
+            management: '📋 Planning & setup. Assign managers or experienced team members. Starts first.',
+            design: '🎨 Visual design & UX. Assign designers. Starts when Management reaches 50%.',
+            development: '💻 Building & coding. Assign developers. Starts when Design reaches 50%.',
+            review: '✅ Testing & polish. Assign anyone. Starts when Development reaches 50%.'
+        };
 
         // Build phase assignment grid - each phase shows team members with checkboxes
         let phasesHTML = '<div class="phases-assignment-grid">';
@@ -1670,10 +1868,14 @@ Conversation History: ${window.GameState.conversationHistory.length}
             phasesHTML += `
                 <div class="phase-assignment-column phase-${phaseStatus}" data-phase-name="${phaseName}">
                     <div class="phase-column-header">
-                        <h3>${phaseLabels[phaseName]}</h3>
+                        <h3>${phaseIcons[phaseName]} ${phaseLabels[phaseName]}</h3>
                         <span class="phase-status-badge status-${phaseStatus}">${phaseStatus}</span>
                         <div class="phase-progress-bar-mini">
                             <div class="phase-progress-fill-mini" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <div class="phase-tutorial-hint">
+                            <span class="phase-hint-icon">💡</span>
+                            <span class="phase-hint-text">${phaseDescriptions[phaseName]}</span>
                         </div>
                     </div>
                     <div class="team-checkbox-list">

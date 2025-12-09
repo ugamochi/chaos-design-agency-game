@@ -142,6 +142,11 @@ const TimerModule = (function() {
                     return;
                 }
 
+                // Pay weekly salaries (before resetting hours)
+                if (window.processWeeklySalaries) {
+                    window.processWeeklySalaries();
+                }
+
                 // Reset weekly hours at start of new week
                 window.resetWeeklyHours = window.resetWeeklyHours || function() {
                     window.GameState.team.forEach(member => {
@@ -177,10 +182,7 @@ const TimerModule = (function() {
                 window.generateWeeklyClientFeedback();
             }
             
-            // Process monthly salaries at start of new month
-            if (window.GameState.currentDay === 1) {
-                window.processMonthlySalaries();
-            }
+            // Process monthly salaries - REMOVED (replaced by weekly system)
         }
 
         // Deduct hours from team members in real-time

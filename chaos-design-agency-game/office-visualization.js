@@ -5,35 +5,63 @@ const OfficeVisualizationModule = (function() {
     'use strict';
 
     const COLORS = {
-        background: '#f7f6f3',
-        desk: '#34495e',
-        deskStroke: '#2c3e50',
-        meetingRoom: '#ecf0f1',
-        meetingRoomStroke: '#95a5a6',
-        playerDesk: '#3498db',
-        playerDeskStroke: '#2980b9',
-        toilet: '#ecf0f1',
-        toiletStroke: '#95a5a6',
-        window: '#34495e',
-        door: '#2c3e50',
-        teamMember: '#e74c3c',
-        teamMemberWorking: '#27ae60',
-        teamMemberMeeting: '#f39c12',
-        player: '#9b59b6',
-        progress: '#2ecc71',
-        tension: '#e74c3c',
-        celebration: '#f1c40f',
-        crisis: '#7f8c8d',
-        text: '#2c3e50',
-        textLight: '#7f8c8d'
+        background: '#FFFFFF',
+        wall: '#000000',
+        floor: '#F5F5F5',
+        desk: '#FFFFFF',
+        deskStroke: '#000000',
+        meetingRoom: '#E8F4E8',
+        meetingRoomStroke: '#000000',
+        playerDesk: '#FFE8CC',
+        playerDeskStroke: '#000000',
+        toilet: '#E8F0FF',
+        toiletStroke: '#000000',
+        window: '#FFFFFF',
+        windowStroke: '#000000',
+        door: '#FFFFFF',
+        doorStroke: '#000000',
+        teamMember: '#FF6B6B',
+        teamMemberWorking: '#51CF66',
+        teamMemberMeeting: '#FFA94D',
+        player: '#845EF7',
+        progress: '#51CF66',
+        tension: '#FF6B6B',
+        celebration: '#FFD43B',
+        crisis: '#868E96',
+        text: '#000000',
+        textLight: '#868E96'
     };
 
     const LAYOUT = {
-        window: { x: 60, y: 40, width: 680, height: 6 },
-        workersDesk: { x: 120, y: 140, width: 320, height: 110, rx: 2 },
-        meetingRoom: { x: 60, y: 360, width: 200, height: 110 },
-        playerDesk: { x: 480, y: 140, width: 90, height: 110, rx: 2 },
-        toilet: { x: 280, y: 360, width: 110, height: 110 }
+        // Room dimensions (800x500)
+        room: { x: 20, y: 20, width: 760, height: 460 },
+        // Walls
+        walls: [
+            { x1: 20, y1: 20, x2: 780, y2: 20 }, // Top wall
+            { x1: 780, y1: 20, x2: 780, y2: 480 }, // Right wall
+            { x1: 780, y1: 480, x2: 20, y2: 480 }, // Bottom wall
+            { x1: 20, y1: 480, x2: 20, y2: 20 } // Left wall
+        ],
+        // Windows on top wall
+        windows: [
+            { x: 100, y: 20, width: 150, height: 8 },
+            { x: 300, y: 20, width: 150, height: 8 },
+            { x: 500, y: 20, width: 150, height: 8 }
+        ],
+        // Door on left wall
+        door: { x: 20, y: 200, width: 8, height: 80 },
+        // Work desks area (open plan)
+        workersDesk: { x: 100, y: 100, width: 300, height: 120, rx: 0 },
+        // Meeting room (enclosed)
+        meetingRoom: { x: 550, y: 100, width: 180, height: 150 },
+        // Manager desk (your desk)
+        playerDesk: { x: 450, y: 100, width: 80, height: 120, rx: 0 },
+        // Bathroom
+        toilet: { x: 550, y: 300, width: 180, height: 130 },
+        // Coffee area
+        coffeeArea: { x: 100, y: 350, width: 100, height: 80 },
+        // Sofa for unassigned workers
+        sofa: { x: 250, y: 350, width: 150, height: 60 }
     };
 
     let svg = null;
@@ -42,6 +70,9 @@ const OfficeVisualizationModule = (function() {
     let lastUpdateTime = 0;
     let projectCompletionTimes = new Map();
     let deskSeatAssignments = new Map();
+    let memberActivities = new Map(); // Track current activity for each member
+    let activityTimers = new Map(); // Track when to change activity
+    let activityTargets = new Map(); // Stable target positions per member/activity
 
     function init() {
         svg = document.getElementById('officeSvg');
@@ -65,174 +96,204 @@ const OfficeVisualizationModule = (function() {
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('class', 'office-layout');
 
-        const window = LAYOUT.window;
-        const windowRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        windowRect.setAttribute('x', window.x);
-        windowRect.setAttribute('y', window.y);
-        windowRect.setAttribute('width', window.width);
-        windowRect.setAttribute('height', window.height);
-        windowRect.setAttribute('fill', COLORS.window);
-        g.appendChild(windowRect);
+        // Draw floor
+        const floor = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        floor.setAttribute('x', LAYOUT.room.x);
+        floor.setAttribute('y', LAYOUT.room.y);
+        floor.setAttribute('width', LAYOUT.room.width);
+        floor.setAttribute('height', LAYOUT.room.height);
+        floor.setAttribute('fill', COLORS.floor);
+        g.appendChild(floor);
 
-        const workersDesk = LAYOUT.workersDesk;
-        const deskRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        deskRect.setAttribute('x', workersDesk.x);
-        deskRect.setAttribute('y', workersDesk.y);
-        deskRect.setAttribute('width', workersDesk.width);
-        deskRect.setAttribute('height', workersDesk.height);
-        deskRect.setAttribute('rx', workersDesk.rx);
-        deskRect.setAttribute('fill', COLORS.desk);
-        deskRect.setAttribute('stroke', COLORS.deskStroke);
-        deskRect.setAttribute('stroke-width', '1.5');
-        g.appendChild(deskRect);
+        // Draw walls (bold black lines)
+        LAYOUT.walls.forEach(wall => {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', wall.x1);
+            line.setAttribute('y1', wall.y1);
+            line.setAttribute('x2', wall.x2);
+            line.setAttribute('y2', wall.y2);
+            line.setAttribute('stroke', COLORS.wall);
+            line.setAttribute('stroke-width', '4');
+            line.setAttribute('stroke-linecap', 'square');
+            g.appendChild(line);
+        });
 
-        const playerDesk = LAYOUT.playerDesk;
-        const playerDeskRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        playerDeskRect.setAttribute('x', playerDesk.x);
-        playerDeskRect.setAttribute('y', playerDesk.y);
-        playerDeskRect.setAttribute('width', playerDesk.width);
-        playerDeskRect.setAttribute('height', playerDesk.height);
-        playerDeskRect.setAttribute('rx', playerDesk.rx);
-        playerDeskRect.setAttribute('fill', COLORS.playerDesk);
-        playerDeskRect.setAttribute('stroke', COLORS.playerDeskStroke);
-        playerDeskRect.setAttribute('stroke-width', '1.5');
-        g.appendChild(playerDeskRect);
+        // Draw windows
+        LAYOUT.windows.forEach(window => {
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', window.x);
+            rect.setAttribute('y', window.y);
+            rect.setAttribute('width', window.width);
+            rect.setAttribute('height', window.height);
+            rect.setAttribute('fill', COLORS.window);
+            rect.setAttribute('stroke', COLORS.windowStroke);
+            rect.setAttribute('stroke-width', '3');
+            g.appendChild(rect);
+        });
 
+        // Draw door
+        const door = LAYOUT.door;
+        const doorRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        doorRect.setAttribute('x', door.x);
+        doorRect.setAttribute('y', door.y);
+        doorRect.setAttribute('width', door.width);
+        doorRect.setAttribute('height', door.height);
+        doorRect.setAttribute('fill', COLORS.door);
+        doorRect.setAttribute('stroke', COLORS.doorStroke);
+        doorRect.setAttribute('stroke-width', '3');
+        g.appendChild(doorRect);
+
+        // Draw meeting room (enclosed space)
         const meetingRoom = LAYOUT.meetingRoom;
         const meetingRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         meetingRect.setAttribute('x', meetingRoom.x);
         meetingRect.setAttribute('y', meetingRoom.y);
         meetingRect.setAttribute('width', meetingRoom.width);
         meetingRect.setAttribute('height', meetingRoom.height);
-        meetingRect.setAttribute('rx', '2');
         meetingRect.setAttribute('fill', COLORS.meetingRoom);
         meetingRect.setAttribute('stroke', COLORS.meetingRoomStroke);
-        meetingRect.setAttribute('stroke-width', '1.5');
+        meetingRect.setAttribute('stroke-width', '3');
         g.appendChild(meetingRect);
+        
+        // Meeting room label
+        const meetingLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        meetingLabel.setAttribute('x', meetingRoom.x + meetingRoom.width / 2);
+        meetingLabel.setAttribute('y', meetingRoom.y + meetingRoom.height / 2);
+        meetingLabel.setAttribute('text-anchor', 'middle');
+        meetingLabel.setAttribute('font-size', '12');
+        meetingLabel.setAttribute('font-weight', '600');
+        meetingLabel.setAttribute('fill', COLORS.text);
+        meetingLabel.textContent = 'MEETING';
+        g.appendChild(meetingLabel);
 
-        const meetingDoor = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        meetingDoor.setAttribute('x', meetingRoom.x + meetingRoom.width / 2 - 10);
-        meetingDoor.setAttribute('y', meetingRoom.y);
-        meetingDoor.setAttribute('width', '20');
-        meetingDoor.setAttribute('height', '6');
-        meetingDoor.setAttribute('rx', '1');
-        meetingDoor.setAttribute('fill', COLORS.door);
-        g.appendChild(meetingDoor);
-
+        // Draw toilet
         const toilet = LAYOUT.toilet;
         const toiletRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         toiletRect.setAttribute('x', toilet.x);
         toiletRect.setAttribute('y', toilet.y);
         toiletRect.setAttribute('width', toilet.width);
         toiletRect.setAttribute('height', toilet.height);
-        toiletRect.setAttribute('rx', '2');
         toiletRect.setAttribute('fill', COLORS.toilet);
         toiletRect.setAttribute('stroke', COLORS.toiletStroke);
-        toiletRect.setAttribute('stroke-width', '1.5');
+        toiletRect.setAttribute('stroke-width', '3');
         g.appendChild(toiletRect);
-
-        const toiletDoor = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        toiletDoor.setAttribute('x', toilet.x + toilet.width);
-        toiletDoor.setAttribute('y', toilet.y + toilet.height / 2 - 10);
-        toiletDoor.setAttribute('width', '6');
-        toiletDoor.setAttribute('height', '20');
-        toiletDoor.setAttribute('rx', '1');
-        toiletDoor.setAttribute('fill', COLORS.door);
-        g.appendChild(toiletDoor);
-
-        const mainDoor = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        mainDoor.setAttribute('x', 690);
-        mainDoor.setAttribute('y', 420);
-        mainDoor.setAttribute('width', '20');
-        mainDoor.setAttribute('height', '6');
-        mainDoor.setAttribute('rx', '1');
-        mainDoor.setAttribute('fill', COLORS.door);
-        g.appendChild(mainDoor);
-
-        const labelsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        labelsGroup.setAttribute('class', 'space-labels');
-
-        const windowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        windowLabel.setAttribute('x', window.x + window.width / 2);
-        windowLabel.setAttribute('y', window.y + window.height + 16);
-        windowLabel.setAttribute('text-anchor', 'middle');
-        windowLabel.setAttribute('font-size', '10');
-        windowLabel.setAttribute('font-weight', '400');
-        windowLabel.setAttribute('fill', COLORS.textLight);
-        windowLabel.textContent = 'Window';
-        labelsGroup.appendChild(windowLabel);
-
-        const deskLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        deskLabel.setAttribute('x', workersDesk.x + workersDesk.width / 2);
-        deskLabel.setAttribute('y', workersDesk.y + workersDesk.height / 2 + 4);
-        deskLabel.setAttribute('text-anchor', 'middle');
-        deskLabel.setAttribute('font-size', '10');
-        deskLabel.setAttribute('font-weight', '400');
-        deskLabel.setAttribute('fill', '#ecf0f1');
-        deskLabel.textContent = 'working desk';
-        labelsGroup.appendChild(deskLabel);
-
-        const playerDeskLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        playerDeskLabel.setAttribute('x', playerDesk.x + playerDesk.width / 2);
-        playerDeskLabel.setAttribute('y', playerDesk.y + playerDesk.height / 2 + 4);
-        playerDeskLabel.setAttribute('text-anchor', 'middle');
-        playerDeskLabel.setAttribute('font-size', '9');
-        playerDeskLabel.setAttribute('font-weight', '400');
-        playerDeskLabel.setAttribute('fill', '#ecf0f1');
-        playerDeskLabel.textContent = 'art director desk';
-        labelsGroup.appendChild(playerDeskLabel);
-
-        const meetingLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        meetingLabel.setAttribute('x', meetingRoom.x + meetingRoom.width / 2);
-        meetingLabel.setAttribute('y', meetingRoom.y + meetingRoom.height / 2);
-        meetingLabel.setAttribute('text-anchor', 'middle');
-        meetingLabel.setAttribute('font-size', '11');
-        meetingLabel.setAttribute('font-weight', '300');
-        meetingLabel.setAttribute('fill', COLORS.text);
-        meetingLabel.textContent = 'meeting room';
-        labelsGroup.appendChild(meetingLabel);
-
-        const meetingDoorLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        meetingDoorLabel.setAttribute('x', meetingRoom.x + meetingRoom.width / 2);
-        meetingDoorLabel.setAttribute('y', meetingRoom.y - 5);
-        meetingDoorLabel.setAttribute('text-anchor', 'middle');
-        meetingDoorLabel.setAttribute('font-size', '9');
-        meetingDoorLabel.setAttribute('font-weight', '300');
-        meetingDoorLabel.setAttribute('fill', COLORS.textLight);
-        meetingDoorLabel.textContent = 'door';
-        labelsGroup.appendChild(meetingDoorLabel);
-
+        
+        // Toilet label
         const toiletLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         toiletLabel.setAttribute('x', toilet.x + toilet.width / 2);
         toiletLabel.setAttribute('y', toilet.y + toilet.height / 2);
         toiletLabel.setAttribute('text-anchor', 'middle');
-        toiletLabel.setAttribute('font-size', '11');
-        toiletLabel.setAttribute('font-weight', '300');
+        toiletLabel.setAttribute('font-size', '12');
+        toiletLabel.setAttribute('font-weight', '600');
         toiletLabel.setAttribute('fill', COLORS.text);
-        toiletLabel.textContent = 'toilet';
-        labelsGroup.appendChild(toiletLabel);
+        toiletLabel.textContent = 'RESTROOM';
+        g.appendChild(toiletLabel);
 
-        const toiletDoorLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        toiletDoorLabel.setAttribute('x', toilet.x + toilet.width + 12);
-        toiletDoorLabel.setAttribute('y', toilet.y + toilet.height / 2);
-        toiletDoorLabel.setAttribute('text-anchor', 'middle');
-        toiletDoorLabel.setAttribute('font-size', '9');
-        toiletDoorLabel.setAttribute('font-weight', '300');
-        toiletDoorLabel.setAttribute('fill', COLORS.textLight);
-        toiletDoorLabel.textContent = 'door';
-        labelsGroup.appendChild(toiletDoorLabel);
+        // Draw coffee area
+        const coffee = LAYOUT.coffeeArea;
+        const coffeeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        coffeeRect.setAttribute('x', coffee.x);
+        coffeeRect.setAttribute('y', coffee.y);
+        coffeeRect.setAttribute('width', coffee.width);
+        coffeeRect.setAttribute('height', coffee.height);
+        coffeeRect.setAttribute('fill', '#FFF5E6');
+        coffeeRect.setAttribute('stroke', COLORS.deskStroke);
+        coffeeRect.setAttribute('stroke-width', '2');
+        g.appendChild(coffeeRect);
+        
+        // Coffee label
+        const coffeeLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        coffeeLabel.setAttribute('x', coffee.x + coffee.width / 2);
+        coffeeLabel.setAttribute('y', coffee.y + coffee.height / 2);
+        coffeeLabel.setAttribute('text-anchor', 'middle');
+        coffeeLabel.setAttribute('font-size', '10');
+        coffeeLabel.setAttribute('font-weight', '600');
+        coffeeLabel.setAttribute('fill', COLORS.text);
+        coffeeLabel.textContent = '☕ COFFEE';
+        g.appendChild(coffeeLabel);
 
-        const mainDoorLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        mainDoorLabel.setAttribute('x', 700 + 8);
-        mainDoorLabel.setAttribute('y', 420 - 5);
-        mainDoorLabel.setAttribute('text-anchor', 'middle');
-        mainDoorLabel.setAttribute('font-size', '9');
-        mainDoorLabel.setAttribute('font-weight', '300');
-        mainDoorLabel.setAttribute('fill', COLORS.textLight);
-        mainDoorLabel.textContent = 'door';
-        labelsGroup.appendChild(mainDoorLabel);
+        // Draw sofa
+        const sofa = LAYOUT.sofa;
+        const sofaRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        sofaRect.setAttribute('x', sofa.x);
+        sofaRect.setAttribute('y', sofa.y);
+        sofaRect.setAttribute('width', sofa.width);
+        sofaRect.setAttribute('height', sofa.height);
+        sofaRect.setAttribute('fill', '#C9ADA7');
+        sofaRect.setAttribute('stroke', COLORS.deskStroke);
+        sofaRect.setAttribute('stroke-width', '2');
+        g.appendChild(sofaRect);
+        
+        // Sofa cushions (decorative)
+        for (let i = 0; i < 3; i++) {
+            const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            cushion.setAttribute('x', sofa.x + 10 + (i * 45));
+            cushion.setAttribute('y', sofa.y + 10);
+            cushion.setAttribute('width', 35);
+            cushion.setAttribute('height', 40);
+            cushion.setAttribute('fill', '#A8948C');
+            cushion.setAttribute('stroke', COLORS.deskStroke);
+            cushion.setAttribute('stroke-width', '1');
+            g.appendChild(cushion);
+        }
+        
+        // Sofa label
+        const sofaLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sofaLabel.setAttribute('x', sofa.x + sofa.width / 2);
+        sofaLabel.setAttribute('y', sofa.y - 8);
+        sofaLabel.setAttribute('text-anchor', 'middle');
+        sofaLabel.setAttribute('font-size', '10');
+        sofaLabel.setAttribute('font-weight', '600');
+        sofaLabel.setAttribute('fill', COLORS.textLight);
+        sofaLabel.textContent = 'IDLE AREA';
+        g.appendChild(sofaLabel);
 
-        g.appendChild(labelsGroup);
+        // Draw work desks
+        const workersDesk = LAYOUT.workersDesk;
+        const deskRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        deskRect.setAttribute('x', workersDesk.x);
+        deskRect.setAttribute('y', workersDesk.y);
+        deskRect.setAttribute('width', workersDesk.width);
+        deskRect.setAttribute('height', workersDesk.height);
+        deskRect.setAttribute('fill', COLORS.desk);
+        deskRect.setAttribute('stroke', COLORS.deskStroke);
+        deskRect.setAttribute('stroke-width', '3');
+        g.appendChild(deskRect);
+        
+        // Work desks label
+        const deskLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        deskLabel.setAttribute('x', workersDesk.x + workersDesk.width / 2);
+        deskLabel.setAttribute('y', workersDesk.y + workersDesk.height / 2);
+        deskLabel.setAttribute('text-anchor', 'middle');
+        deskLabel.setAttribute('font-size', '11');
+        deskLabel.setAttribute('font-weight', '600');
+        deskLabel.setAttribute('fill', COLORS.textLight);
+        deskLabel.textContent = 'TEAM DESKS';
+        g.appendChild(deskLabel);
+
+        // Draw manager desk
+        const playerDesk = LAYOUT.playerDesk;
+        const playerDeskRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        playerDeskRect.setAttribute('x', playerDesk.x);
+        playerDeskRect.setAttribute('y', playerDesk.y);
+        playerDeskRect.setAttribute('width', playerDesk.width);
+        playerDeskRect.setAttribute('height', playerDesk.height);
+        playerDeskRect.setAttribute('fill', COLORS.playerDesk);
+        playerDeskRect.setAttribute('stroke', COLORS.playerDeskStroke);
+        playerDeskRect.setAttribute('stroke-width', '3');
+        g.appendChild(playerDeskRect);
+        
+        // Manager desk label
+        const managerLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        managerLabel.setAttribute('x', playerDesk.x + playerDesk.width / 2);
+        managerLabel.setAttribute('y', playerDesk.y + playerDesk.height / 2);
+        managerLabel.setAttribute('text-anchor', 'middle');
+        managerLabel.setAttribute('font-size', '10');
+        managerLabel.setAttribute('font-weight', '600');
+        managerLabel.setAttribute('fill', COLORS.text);
+        managerLabel.textContent = 'YOU';
+        g.appendChild(managerLabel);
+
         svg.appendChild(g);
     }
 
@@ -251,8 +312,140 @@ const OfficeVisualizationModule = (function() {
         return corners[cornerIndex];
     }
 
+    function getRandomActivity(isUnassigned) {
+        const rand = Math.random();
+
+        if (isUnassigned) {
+            // Idle workers: mostly sofa, sometimes coffee/restroom
+            if (rand < 0.70) return 'sofa';
+            if (rand < 0.85) return 'coffee';
+            return 'bathroom';
+        }
+
+        // Assigned workers: mostly at desk
+        if (rand < 0.80) return 'desk';
+        if (rand < 0.90) return 'bathroom';
+        if (rand < 0.95) return 'coffee';
+        return 'meeting';
+    }
+
+    function getActivityDuration(activity) {
+        switch (activity) {
+            case 'desk': return 20000 + Math.random() * 40000;      // 20-60s
+            case 'bathroom': return 3000 + Math.random() * 5000;    // 3-8s
+            case 'coffee': return 5000 + Math.random() * 10000;     // 5-15s
+            case 'meeting': return 10000 + Math.random() * 20000;   // 10-30s
+            case 'sofa': return 30000 + Math.random() * 60000;      // Idle on sofa
+            default: return 20000;
+        }
+    }
+
+    function getActivityPosition(activity, member, memberIndex, allIdleWorkers) {
+        const meeting = LAYOUT.meetingRoom;
+        const coffee = LAYOUT.coffeeArea;
+        const bathroom = LAYOUT.toilet;
+        const sofa = LAYOUT.sofa;
+
+        switch (activity) {
+            case 'sofa': {
+                const idleIndex = allIdleWorkers ? allIdleWorkers.findIndex(m => m.id === member.id) : 0;
+                const spacing = sofa.width / Math.max((allIdleWorkers ? allIdleWorkers.length + 1 : 2), 2);
+                return {
+                    x: sofa.x + spacing * (idleIndex + 1),
+                    y: sofa.y + sofa.height / 2
+                };
+            }
+            case 'bathroom':
+                return {
+                    x: bathroom.x + 30 + Math.random() * (bathroom.width - 60),
+                    y: bathroom.y + 30 + Math.random() * (bathroom.height - 60)
+                };
+            case 'coffee': {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 15 + Math.random() * 20;
+                return {
+                    x: coffee.x + coffee.width / 2 + Math.cos(angle) * dist,
+                    y: coffee.y + coffee.height / 2 + Math.sin(angle) * dist
+                };
+            }
+            case 'meeting': {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 20 + Math.random() * 30;
+                return {
+                    x: meeting.x + meeting.width / 2 + Math.cos(angle) * dist,
+                    y: meeting.y + meeting.height / 2 + Math.sin(angle) * dist
+                };
+            }
+            case 'desk':
+            default:
+                return getDeskSeatPosition(member.id, memberIndex, 8);
+        }
+    }
+
+    function getOrCreateActivityTarget(activity, member, seatIndex, idleWorkers) {
+        const prev = activityTargets.get(member.id);
+        if (prev && prev.activity === activity) {
+            return { x: prev.x, y: prev.y };
+        }
+        const pos = getActivityPosition(activity, member, seatIndex, idleWorkers);
+        activityTargets.set(member.id, { activity, x: pos.x, y: pos.y });
+        return pos;
+    }
+
+    function isWorkerAssigned(member) {
+        let hasAssignment = false;
+        if (window.GameState && window.GameState.projects) {
+            window.GameState.projects.forEach(project => {
+                if (!project.phases) return;
+                ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                    const phase = project.phases[phaseName];
+                    if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
+                        hasAssignment = true;
+                    }
+                });
+            });
+        }
+        return hasAssignment;
+    }
+
+    function updateMemberActivity(member) {
+        const unassigned = !isWorkerAssigned(member);
+
+        const now = Date.now();
+        const currentActivity = memberActivities.get(member.id) || 'desk';
+        const activityTimer = activityTimers.get(member.id) || 0;
+
+        if (now > activityTimer) {
+            const newActivity = getRandomActivity(unassigned);
+            memberActivities.set(member.id, newActivity);
+            activityTimers.set(member.id, now + getActivityDuration(newActivity));
+            return newActivity;
+        }
+
+        return currentActivity;
+    }
+
+    function isWorkerAssigned(member) {
+        // Check if worker is assigned to any project phase
+        let hasAssignment = false;
+        if (window.GameState && window.GameState.projects) {
+            window.GameState.projects.forEach(project => {
+                if (!project.phases) return;
+                ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                    const phase = project.phases[phaseName];
+                    if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
+                        hasAssignment = true;
+                    }
+                });
+            });
+        }
+        return hasAssignment;
+    }
+
     function getTeamMemberLocation(member) {
-        if (!member || member.hasQuit) return null;
+        if (!member || member.hasQuit || member.isIll) {
+            return null;
+        }
 
         if (member.id === 'player') {
             return {
@@ -262,67 +455,24 @@ const OfficeVisualizationModule = (function() {
             };
         }
 
-        // Check if member is assigned to any project phase
-        let assignedToProject = null;
-        window.GameState.projects.forEach(project => {
-            if (!project.phases) return;
-            ['management', 'design', 'development', 'review'].forEach(phaseName => {
-                const phase = project.phases[phaseName];
-                if (phase && phase.teamAssigned && phase.teamAssigned.includes(member.id)) {
-                    if (!assignedToProject) {
-                        assignedToProject = project;
-                    }
-                }
-            });
-        });
+        const activeWorkers = window.GameState.team.filter(m => !m.hasQuit && !m.isIll && m.id !== 'player');
+        const seatIndex = deskSeatAssignments.get(member.id) ?? activeWorkers.indexOf(member);
         
-        if (assignedToProject && assignedToProject.status === 'crisis') {
-            return {
-                type: 'meeting',
-                x: LAYOUT.meetingRoom.x + LAYOUT.meetingRoom.width / 2,
-                y: LAYOUT.meetingRoom.y + LAYOUT.meetingRoom.height / 2
-            };
+        if (seatIndex < 0 || !deskSeatAssignments.has(member.id)) {
+            deskSeatAssignments.set(member.id, activeWorkers.indexOf(member));
         }
 
-        const activeWorkers = window.GameState.team
-            .filter(m => {
-                if (m.hasQuit || m.id === 'player') return false;
-                
-                // Check if assigned to any crisis project
-                let hasCrisisProject = false;
-                window.GameState.projects.forEach(project => {
-                    if (!project.phases) return;
-                    ['management', 'design', 'development', 'review'].forEach(phaseName => {
-                        const phase = project.phases[phaseName];
-                        if (phase && phase.teamAssigned && phase.teamAssigned.includes(m.id)) {
-                            if (project.status === 'crisis') {
-                                hasCrisisProject = true;
-                            }
-                        }
-                    });
-                });
-                
-                return !hasCrisisProject;
-            })
-            .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+        // Get all idle workers for sofa positioning
+        const idleWorkers = activeWorkers.filter(m => !isWorkerAssigned(m));
 
-        if (!deskSeatAssignments.has(member.id)) {
-            const memberIndex = activeWorkers.findIndex(m => m.id === member.id);
-            if (memberIndex >= 0) {
-                deskSeatAssignments.set(member.id, memberIndex);
-            } else {
-                const nextAvailableIndex = activeWorkers.length;
-                deskSeatAssignments.set(member.id, nextAvailableIndex);
-            }
-        }
-
-        const seatIndex = deskSeatAssignments.get(member.id);
-        const seatPos = getDeskSeatPosition(member.id, seatIndex, Math.max(activeWorkers.length, 1));
+        // Update activity based on timer and assignment
+        const currentActivity = updateMemberActivity(member);
+        const position = getOrCreateActivityTarget(currentActivity, member, seatIndex, idleWorkers);
 
         return {
-            type: 'desk',
-            x: seatPos.x,
-            y: seatPos.y
+            type: currentActivity,
+            x: position.x,
+            y: position.y
         };
     }
 
@@ -331,15 +481,25 @@ const OfficeVisualizationModule = (function() {
             return COLORS.player;
         }
 
-        if (location.type === 'meeting') {
-            return COLORS.teamMemberMeeting;
+        // Color based on activity
+        if (location.type === 'sofa') {
+            return COLORS.teamMember; // Red for idle on sofa
         }
 
-        if (member.currentAssignment) {
-            return COLORS.teamMemberWorking;
+        if (location.type === 'meeting' || location.type === 'coffee') {
+            return COLORS.teamMemberMeeting; // Orange for socializing
         }
 
-        return COLORS.teamMember;
+        if (location.type === 'bathroom') {
+            return COLORS.textLight; // Gray for bathroom
+        }
+
+        // At desk - color based on work status
+        if (isWorkerAssigned(member)) {
+            return COLORS.teamMemberWorking; // Green for working
+        }
+
+        return COLORS.teamMember; // Red for idle at desk
     }
 
     function drawTeamMembers() {
@@ -357,14 +517,11 @@ const OfficeVisualizationModule = (function() {
             const currentPos = teamPositions.get(member.id) || location;
             const targetPos = location;
 
+            // Smooth movement for all locations
             let x, y;
-            if (location.type === 'desk') {
-                x = targetPos.x;
-                y = targetPos.y;
-            } else {
-                x = currentPos.x + (targetPos.x - currentPos.x) * 0.1;
-                y = currentPos.y + (targetPos.y - currentPos.y) * 0.1;
-            }
+            const smoothing = location.type === 'desk' ? 0.2 : 0.05; // Slower movement when walking
+            x = currentPos.x + (targetPos.x - currentPos.x) * smoothing;
+            y = currentPos.y + (targetPos.y - currentPos.y) * smoothing;
 
             teamPositions.set(member.id, { x, y, ...targetPos });
 
@@ -376,13 +533,18 @@ const OfficeVisualizationModule = (function() {
             circle.setAttribute('cy', y);
             circle.setAttribute('r', radius);
             circle.setAttribute('fill', color);
-            circle.setAttribute('stroke', '#ecf0f1');
-            circle.setAttribute('stroke-width', '1.5');
+            circle.setAttribute('stroke', COLORS.wall);
+            circle.setAttribute('stroke-width', '2');
 
+            // Visual effects based on activity
             if (location.type === 'desk' && member.currentAssignment) {
                 const pulse = 1 + Math.sin(Date.now() / 500) * 0.1;
                 circle.setAttribute('r', radius * pulse);
+                circle.setAttribute('opacity', 0.95);
+            } else if (location.type === 'coffee' || location.type === 'meeting') {
                 circle.setAttribute('opacity', 0.9);
+            } else if (location.type === 'bathroom') {
+                circle.setAttribute('opacity', 0.7);
             }
 
             teamGroup.appendChild(circle);
