@@ -4,6 +4,9 @@ philosophy-and-utility/
 # Backup zip files
 *.zip
 
+# macOS system files
+.DS_Store
+
 
 
 

@@ -294,7 +294,83 @@ const OfficeVisualizationModule = (function() {
         managerLabel.textContent = 'YOU';
         g.appendChild(managerLabel);
 
+        // Draw laptops on desks
+        drawLaptops(g);
+
         svg.appendChild(g);
+    }
+
+    function drawLaptops(parentGroup) {
+        // Player laptop (centered on player desk, positioned higher to avoid name overlap)
+        const playerDesk = LAYOUT.playerDesk;
+        drawLaptop(parentGroup, playerDesk.x + playerDesk.width / 2, playerDesk.y + 55, COLORS.playerDeskStroke);
+
+        // Worker laptops (centered on desk edges, away from where workers stand)
+        const workersDesk = LAYOUT.workersDesk;
+        const laptopPositions = [
+            { x: workersDesk.x + 60, y: workersDesk.y + 25 },     // Top-left area
+            { x: workersDesk.x + workersDesk.width - 60, y: workersDesk.y + 25 },     // Top-right area
+            { x: workersDesk.x + workersDesk.width - 60, y: workersDesk.y + workersDesk.height - 25 },     // Bottom-right area
+            { x: workersDesk.x + 60, y: workersDesk.y + workersDesk.height - 25 }      // Bottom-left area
+        ];
+
+        laptopPositions.forEach(pos => {
+            drawLaptop(parentGroup, pos.x, pos.y, COLORS.deskStroke);
+        });
+    }
+
+    function drawLaptop(parentGroup, x, y, strokeColor) {
+        const laptopGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        laptopGroup.setAttribute('class', 'laptop');
+
+        const laptopWidth = 24;  // Increased from 14
+        const laptopHeight = 18; // Increased from 10
+
+        // Laptop base (keyboard part)
+        const base = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        base.setAttribute('x', x - laptopWidth / 2);
+        base.setAttribute('y', y);
+        base.setAttribute('width', laptopWidth);
+        base.setAttribute('height', laptopHeight / 2);
+        base.setAttribute('fill', '#2C2C2C');
+        base.setAttribute('stroke', strokeColor);
+        base.setAttribute('stroke-width', '0.5');
+        base.setAttribute('rx', '1');
+        laptopGroup.appendChild(base);
+
+        // Laptop screen
+        const screen = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        screen.setAttribute('x', x - laptopWidth / 2);
+        screen.setAttribute('y', y - laptopHeight / 2 + 1);
+        screen.setAttribute('width', laptopWidth);
+        screen.setAttribute('height', laptopHeight / 2);
+        screen.setAttribute('fill', '#E8E8E8');
+        screen.setAttribute('stroke', '#2C2C2C');
+        screen.setAttribute('stroke-width', '0.8');
+        screen.setAttribute('rx', '0.5');
+        laptopGroup.appendChild(screen);
+
+        // Screen glow (subtle)
+        const glow = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        glow.setAttribute('x', x - laptopWidth / 2 + 1);
+        glow.setAttribute('y', y - laptopHeight / 2 + 2);
+        glow.setAttribute('width', laptopWidth - 2);
+        glow.setAttribute('height', laptopHeight / 2 - 2);
+        glow.setAttribute('fill', '#A8D5FF');
+        glow.setAttribute('opacity', '0.6');
+        glow.setAttribute('rx', '0.5');
+        laptopGroup.appendChild(glow);
+
+        // Emoji on screen for fun 💻
+        const emoji = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        emoji.setAttribute('x', x);
+        emoji.setAttribute('y', y - laptopHeight / 2 + 7);
+        emoji.setAttribute('text-anchor', 'middle');
+        emoji.setAttribute('font-size', '7');
+        emoji.textContent = '💻';
+        laptopGroup.appendChild(emoji);
+
+        parentGroup.appendChild(laptopGroup);
     }
 
     function getDeskSeatPosition(memberId, index, totalSeats) {

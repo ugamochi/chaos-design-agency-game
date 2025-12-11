@@ -113,6 +113,7 @@ const GameModule = (function() {
             window.selectedChoiceId = null;
             window.currentConversationStartTime = null;
             window.currentConversationMeta = null;
+            window.weekendModalActive = false;
 
             window.checkForConversations();
             window.displayGameState();
@@ -135,7 +136,8 @@ const GameModule = (function() {
     function initializeRandomTeam() {
         const allMembers = window.AllTeamMembers || [];
         const player = allMembers.find(m => m.id === 'player');
-        const availableWorkers = allMembers.filter(m => m.id !== 'player');
+        // Filter out player and special characters that don't start in team
+        const availableWorkers = allMembers.filter(m => m.id !== 'player' && m.startsInTeam !== false);
         
         // Check if player already exists in GameState (from saved game) to preserve burnout
         const existingPlayer = window.GameState.team.find(m => m.id === 'player');
@@ -261,6 +263,12 @@ const GameModule = (function() {
             setTimeout(() => feedbackElement.remove(), 300);
         }
 
+        // Check if it's Friday (Day 5) - trigger weekend choice modal
+        if (window.GameState.currentDay === 5) {
+            window.showWeekendChoiceModal();
+            return; // Pause advancement until weekend choice is made
+        }
+
         // With real-time timer, manually advance by 8 hours (full work day)
         // This is a manual override option
         if (window.advanceTimeByHours) {
@@ -294,7 +302,19 @@ const GameModule = (function() {
         const previousWeek = window.GameState.currentWeek - (window.GameState.currentDay === 1 ? 1 : 0);
         const isNewWeek = window.GameState.currentDay === 1;
         
+        // Track weekend/overtime work for conversation triggers
         if (isNewWeek) {
+            const player = window.GameState.team.find(m => m.id === 'player');
+            
+            // If player worked overtime last week (negative hours), increment counters
+            if (player && player.hours < 0) {
+                window.GameState.weekendsWorked = (window.GameState.weekendsWorked || 0) + 1;
+                window.GameState.playerOvertimeWeeks = (window.GameState.playerOvertimeWeeks || 0) + 1;
+            } else {
+                // Reset consecutive overtime counter if they took a break
+                window.GameState.playerOvertimeWeeks = 0;
+            }
+            
             resetWeeklyHours();
         } else {
             resetDailyHours();
@@ -600,6 +620,209 @@ const GameModule = (function() {
         });
     }
 
+    function handleWeekendChoice(choice) {
+        const player = window.GameState.team.find(m => m.id === 'player');
+        
+        if (choice === 'rest') {
+            // Everyone takes the weekend off
+            if (player) {
+                window.adjustBurnout('player', -20, 'Weekend rest');
+            }
+            window.applyTeamMoraleConsequence(10);
+            window.GameState.consecutiveWeekendsWorked = 0;
+            
+            window.GameState.conversationHistory.push({
+                title: 'Weekend Off',
+                message: 'You close the laptop. The team thanks you for respecting their time.',
+                type: 'success',
+                timestamp: `Week ${window.GameState.currentWeek}, Day 5`
+            });
+            
+        } else if (choice === 'solo') {
+            // Player works alone
+            if (player) {
+                window.adjustBurnout('player', 30, 'Solo weekend work');
+            }
+            window.applyTeamMoraleConsequence(5);
+            
+            // Boost projects player is assigned to (+8% progress)
+            window.GameState.projects.forEach(project => {
+                if (project.status === 'complete') return;
+                
+                // Check if player is assigned to any phase of this project
+                const playerAssigned = ['management', 'design', 'development', 'review'].some(phaseName => {
+                    const phase = project.phases?.[phaseName];
+                    return phase && phase.teamAssigned?.includes('player');
+                });
+                
+                if (playerAssigned) {
+                    project.progress = Math.min(1, project.progress + 0.08);
+                }
+            });
+            
+            window.GameState.playerWeekendsWorked++;
+            window.GameState.consecutiveWeekendsWorked++;
+            
+            window.GameState.conversationHistory.push({
+                title: 'Solo Weekend Work',
+                message: 'You tell the team to rest. You\'ll handle it. By Sunday night you\'re exhausted.',
+                type: 'warning',
+                timestamp: `Week ${window.GameState.currentWeek}, Day 5`
+            });
+            
+        } else if (choice === 'team') {
+            // Everyone works
+            const consecutiveCount = window.GameState.consecutiveWeekendsWorked + 1;
+            
+            if (player) {
+                window.adjustBurnout('player', 15, 'Team weekend work');
+            }
+            
+            // Check if this is the 3rd consecutive weekend
+            if (consecutiveCount >= 3) {
+                // Team members quit
+                const quitMembers = [];
+                window.GameState.team.forEach(member => {
+                    if (member.id !== 'player' && !member.hasQuit) {
+                        // 60% chance each member quits
+                        if (Math.random() < 0.6) {
+                            member.hasQuit = true;
+                            member.morale.current = 0;
+                            quitMembers.push(member.name);
+                            window.GameState.gameStats.teamMemberQuits++;
+                            
+                            // Remove from all project phase assignments
+                            window.GameState.projects.forEach(project => {
+                                if (project.phases) {
+                                    ['management', 'design', 'development', 'review'].forEach(phaseName => {
+                                        const phase = project.phases[phaseName];
+                                        if (phase && phase.teamAssigned) {
+                                            phase.teamAssigned = phase.teamAssigned.filter(id => id !== member.id);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                if (quitMembers.length > 0) {
+                    window.recordKeyMoment(
+                        'Team Quits from Weekend Burnout',
+                        `${quitMembers.join(', ')} quit after being asked to work 3 weekends in a row`,
+                        'crisis'
+                    );
+                    
+                    window.GameState.conversationHistory.push({
+                        title: 'Team Members Quit!',
+                        message: `This is too much. ${quitMembers.join(', ')} quit on Monday morning. Three weekends in a row was the breaking point.`,
+                        type: 'error',
+                        timestamp: `Week ${window.GameState.currentWeek}, Day 5`
+                    });
+                    
+                    window.screenShake('medium');
+                }
+                
+                // Remaining team takes massive morale hit
+                window.applyTeamMoraleConsequence(-20);
+                
+            } else if (consecutiveCount === 2) {
+                // Second weekend - worse morale penalty
+                window.applyTeamMoraleConsequence(-15);
+                
+                window.GameState.conversationHistory.push({
+                    title: 'Weekend Work (2nd in a row)',
+                    message: 'The team looks exhausted. Some are starting to resent you. One more weekend and people might quit.',
+                    type: 'warning',
+                    timestamp: `Week ${window.GameState.currentWeek}, Day 5`
+                });
+            } else {
+                // First time - base morale penalty
+                window.applyTeamMoraleConsequence(-10);
+                
+                window.GameState.conversationHistory.push({
+                    title: 'Weekend Work',
+                    message: 'Nobody\'s happy about it, but they show up Saturday morning.',
+                    type: 'warning',
+                    timestamp: `Week ${window.GameState.currentWeek}, Day 5`
+                });
+            }
+            
+            // Boost all active projects (+15% progress)
+            window.GameState.projects.forEach(project => {
+                if (project.status !== 'complete') {
+                    project.progress = Math.min(1, project.progress + 0.15);
+                }
+            });
+            
+            window.GameState.teamWeekendsWorked++;
+            window.GameState.consecutiveWeekendsWorked = consecutiveCount;
+        }
+        
+        // Record choice in history
+        window.GameState.weekendChoices.push(choice);
+        window.GameState.lastWeekendChoice = choice;
+        
+        // Advance to Monday
+        advanceToMonday();
+    }
+    
+    function advanceToMonday() {
+        // Skip weekend days (6-7), advance to Monday (Day 1 of next week)
+        processWeeklySalaries(); // Pay for the full week before advancing
+        
+        window.GameState.currentDay = 1;
+        window.GameState.currentWeek++;
+        window.GameState.currentHour = 9; // Monday 9 AM
+        
+        // Check if game is over (week 12 complete)
+        if (window.GameState.currentWeek > 12) {
+            handleGameEnd('victory');
+            return;
+        }
+        
+        // Reset shown conversations for new week
+        window.GameState.shownConversationsToday = [];
+        window.purgeDeferredConversations();
+        
+        // Reset weekly hours and tracking
+        resetWeeklyHours();
+        updateGamePhase();
+        triggerScriptedEvents();
+        
+        // Track weekend/overtime work for conversation triggers
+        const player = window.GameState.team.find(m => m.id === 'player');
+        if (player && player.hours < 0) {
+            window.GameState.weekendsWorked = (window.GameState.weekendsWorked || 0) + 1;
+            window.GameState.playerOvertimeWeeks = (window.GameState.playerOvertimeWeeks || 0) + 1;
+        } else {
+            window.GameState.playerOvertimeWeeks = 0;
+        }
+        
+        // Check for illness
+        window.checkForIllness();
+        
+        // Update game state
+        window.updateProjects();
+        window.updatePlayerBurnout();
+        window.updateTeamMorale();
+        
+        // Display updated state
+        window.displayGameState();
+        window.checkTeamEvents();
+        checkFailureConditions();
+        window.checkConditionalConversations();
+        window.checkForConversations();
+        window.checkForContextualTips();
+        
+        // Check project deadlines
+        window.checkProjectDeadlines();
+        updateGameStats();
+        window.saveState();
+        
+        console.log(`Advanced to Monday: Week ${window.GameState.currentWeek}, Day ${window.GameState.currentDay}`);
+    }
+
     function handleGameEnd(endReason = 'victory') {
         window.GameState.gameOver = true;
         
@@ -648,7 +871,9 @@ const GameModule = (function() {
         processWeeklyCosts,
         processWeeklySalaries, // Updated
         resetDailyHours,
-        handleGameEnd
+        handleGameEnd,
+        handleWeekendChoice,
+        advanceToMonday
     };
 })();
 
@@ -670,6 +895,8 @@ window.processWeeklySalaries = GameModule.processWeeklySalaries; // Updated
 window.resetDailyHours = GameModule.resetDailyHours;
 window.resetWeeklyHours = GameModule.resetWeeklyHours;
 window.handleGameEnd = GameModule.handleGameEnd;
+window.handleWeekendChoice = GameModule.handleWeekendChoice;
+window.advanceToMonday = GameModule.advanceToMonday;
 
 document.addEventListener('DOMContentLoaded', () => {
     GameModule.initGame();

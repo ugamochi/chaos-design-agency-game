@@ -83,11 +83,10 @@
             </div>
         </header>
 
-        <!-- Main Content Area (Messages, Projects, and Team) -->
-        <div class="main-layout-container">
-            <!-- Left Column: Messages and Projects -->
-            <div class="left-column">
-                <!-- Messages Section -->
+        <!-- Main Content Area with Tabs -->
+        <div class="main-content-wrapper">
+            <!-- Messages Tab (Default) -->
+            <div id="messagesTab" class="tab-content active">
                 <section class="messages-section">
                     <div class="messages-header">
                         <h2>Messages</h2>
@@ -100,8 +99,20 @@
                         <!-- Activity feed will be dynamically inserted here -->
                     </div>
                 </section>
+            </div>
 
-                <!-- Projects Section -->
+            <!-- Team Tab -->
+            <div id="teamTab" class="tab-content">
+                <section class="team-section">
+                    <h2>Team</h2>
+                    <div id="teamContainer" class="team-container">
+                        <!-- Team members will be dynamically inserted here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Projects Tab -->
+            <div id="projectsTab" class="tab-content">
                 <section class="project-timeline">
                     <h2>Active Projects</h2>
                     <div id="projectsContainer" class="projects-container">
@@ -110,29 +121,38 @@
                 </section>
             </div>
 
-            <!-- Team Section -->
-            <section class="team-section">
-                <h2>Team</h2>
-                <div id="teamContainer" class="team-container">
-                    <!-- Team members will be dynamically inserted here -->
-                </div>
-            </section>
+            <!-- Office Tab -->
+            <div id="officeTab" class="tab-content">
+                <section class="office-visualization-section">
+                    <h2>Office</h2>
+                    <div id="officeVisualization" class="office-visualization">
+                        <svg id="officeSvg" class="office-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
+                            <!-- Office layout elements will be drawn here -->
+                        </svg>
+                    </div>
+                </section>
+            </div>
         </div>
 
-        <!-- Office Visualization Section -->
-        <section class="office-visualization-section">
-            <h2>Office</h2>
-            <div id="officeVisualization" class="office-visualization">
-                <svg id="officeSvg" class="office-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
-                    <!-- Office layout elements will be drawn here -->
-                </svg>
-            </div>
-        </section>
-
-        <!-- Footer Section -->
-        <footer class="footer">
-            <!-- Footer is now empty, controls moved to header -->
-        </footer>
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-tab active" data-tab="messagesTab" title="Messages">
+                <span class="nav-icon">💬</span>
+                <span class="nav-label">Messages</span>
+            </button>
+            <button class="nav-tab" data-tab="teamTab" title="Team">
+                <span class="nav-icon">👥</span>
+                <span class="nav-label">Team</span>
+            </button>
+            <button class="nav-tab" data-tab="projectsTab" title="Projects">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Projects</span>
+            </button>
+            <button class="nav-tab" data-tab="officeTab" title="Office">
+                <span class="nav-icon">🏢</span>
+                <span class="nav-label">Office</span>
+            </button>
+        </nav>
     </div>
 
     <div id="resetModal" class="modal-overlay" style="display:none;">

@@ -41,7 +41,8 @@ const TimerModule = (function() {
         // Pause priority (highest to lowest):
         // 1. Game is over (can't unpause)
         // 2. Active conversation (auto-pause)
-        // 3. Manual pause by user
+        // 3. Weekend choice modal (auto-pause)
+        // 4. Manual pause by user
         
         if (window.GameState.gameOver) {
             return true; // Can never resume after game over
@@ -49,6 +50,10 @@ const TimerModule = (function() {
         
         if (window.currentConversation !== null) {
             return true; // Auto-pause during conversations
+        }
+        
+        if (window.weekendModalActive === true) {
+            return true; // Auto-pause during weekend choice
         }
         
         if (window.GameState.isManuallyPaused) {
@@ -130,6 +135,24 @@ const TimerModule = (function() {
             window.GameState.currentHour = 9;
             window.GameState.currentMinute = 0;
             window.GameState.currentDay++;
+            
+            // Check if it's Friday (Day 5) - trigger weekend choice modal
+            if (window.GameState.currentDay === 6) {
+                // It's now Saturday morning - trigger weekend choice
+                // Set back to Friday evening to show the modal properly
+                window.GameState.currentDay = 5;
+                window.GameState.currentHour = 18;
+                window.GameState.currentMinute = 0;
+                
+                // Show weekend modal
+                if (window.showWeekendChoiceModal) {
+                    window.showWeekendChoiceModal();
+                }
+                
+                // Save state and return (weekend choice will advance to Monday)
+                window.saveState();
+                return;
+            }
             
             // Handle week rollover
             if (window.GameState.currentDay > 7) {
@@ -359,6 +382,24 @@ const TimerModule = (function() {
             window.GameState.currentHour = 9;
             window.GameState.currentMinute = 0;
             window.GameState.currentDay++;
+            
+            // Check if it's Friday (Day 5) - trigger weekend choice modal
+            if (window.GameState.currentDay === 6) {
+                // It's now Saturday morning - trigger weekend choice
+                // Set back to Friday evening to show the modal properly
+                window.GameState.currentDay = 5;
+                window.GameState.currentHour = 18;
+                window.GameState.currentMinute = 0;
+                
+                // Show weekend modal
+                if (window.showWeekendChoiceModal) {
+                    window.showWeekendChoiceModal();
+                }
+                
+                // Save state and return (weekend choice will advance to Monday)
+                window.saveState();
+                return;
+            }
             
             if (window.GameState.currentDay > 7) {
                 window.GameState.currentDay = 1;

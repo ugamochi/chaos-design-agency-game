@@ -29,6 +29,19 @@ const ConversationsModule = (function() {
                     }
                 }
                 window.updateProjectSatisfaction(project);
+                
+                // Track client response timestamp for silence detection
+                if (!window.GameState.lastClientResponseTime) {
+                    window.GameState.lastClientResponseTime = {};
+                }
+                window.GameState.lastClientResponseTime[linkedProjectId] = Date.now();
+                
+                // Track client check-in frequency
+                if (!window.GameState.clientCheckInsPerProject) {
+                    window.GameState.clientCheckInsPerProject = {};
+                }
+                window.GameState.clientCheckInsPerProject[linkedProjectId] = 
+                    (window.GameState.clientCheckInsPerProject[linkedProjectId] || 0) + 1;
             }
         }
         currentConversationStartTime = null;
@@ -388,8 +401,49 @@ const ConversationsModule = (function() {
         }
     }
 
+    function replaceConsequencePlaceholders(consequences, conversation) {
+        if (!consequences || typeof consequences !== 'object') {
+            return consequences;
+        }
+
+        // Get member ID from conversationMemberMap
+        const memberId = conversation && window.GameState.conversationMemberMap && 
+                         window.GameState.conversationMemberMap[conversation.id];
+        
+        // Get linked project ID
+        const linkedProjectId = conversation?.linkedProjectId;
+
+        // Recursively replace placeholders in the consequences object
+        const replaced = Array.isArray(consequences) ? [...consequences] : { ...consequences };
+        
+        for (const key in replaced) {
+            if (replaced.hasOwnProperty(key)) {
+                const value = replaced[key];
+                
+                if (typeof value === 'string') {
+                    // Replace {{MEMBER}} with actual member ID
+                    if (value === '{{MEMBER}}' && memberId) {
+                        replaced[key] = memberId;
+                    }
+                    // Replace {{LINKED}} with linked project ID
+                    else if (value === '{{LINKED}}' && linkedProjectId) {
+                        replaced[key] = linkedProjectId;
+                    }
+                } else if (typeof value === 'object' && value !== null) {
+                    // Recursively process nested objects
+                    replaced[key] = replaceConsequencePlaceholders(value, conversation);
+                }
+            }
+        }
+        
+        return replaced;
+    }
+
     function applyConsequences(consequences, conversation) {
         if (!consequences) return;
+
+        // Replace placeholders in consequences before applying
+        consequences = replaceConsequencePlaceholders(consequences, conversation);
 
         const chanceResults = { success: [], failure: [] };
 
@@ -912,9 +966,234 @@ const ConversationsModule = (function() {
         return total / activeProjects.length;
     }
 
+    // Check for ghost clients (no communication for 10+ game days)
+    function checkClientSilence() {
+        const TEN_DAYS_GAME_TIME = 10; // In game days
+        const resolved = window.GameState.resolvedConversations || [];
+        
+        window.GameState.projects.forEach(project => {
+            if (project.status === 'complete') return;
+            
+            const lastResponse = window.GameState.lastClientResponseTime?.[project.id];
+            if (!lastResponse) return;
+            
+            // Calculate days since last response based on game time progression
+            const daysSinceResponse = (Date.now() - lastResponse) / (1000 * 60); // Rough approximation
+            // Or track via game days elapsed
+            
+            // Simpler approach: track last interaction week/day
+            if (!project.lastClientInteractionWeek) {
+                project.lastClientInteractionWeek = window.GameState.currentWeek;
+                project.lastClientInteractionDay = window.GameState.currentDay;
+            }
+            
+            const daysPassed = 
+                (window.GameState.currentWeek - project.lastClientInteractionWeek) * 7 + 
+                (window.GameState.currentDay - project.lastClientInteractionDay);
+            
+            if (daysPassed >= TEN_DAYS_GAME_TIME) {
+                const ghostId = `client_ghost_return_${project.id}`;
+                if (!resolved.includes(ghostId) && !resolved.includes('client_ghost_return')) {
+                    queueConversation('client_ghost_return', project.id);
+                }
+            }
+        });
+    }
+
+    // Check worker morale for character-specific conversations
+    function checkWorkerMoraleConversations() {
+        const team = window.GameState.team;
+        const projects = window.GameState.projects;
+        const resolved = window.GameState.resolvedConversations || [];
+        const player = team.find(m => m.id === 'player');
+        
+        // Find workers by role (dynamic - works with random teams)
+        const designers = team.filter(m => m.role?.toLowerCase() === 'designer' && m.id !== 'player' && !m.hasQuit);
+        const developers = team.filter(m => m.role?.toLowerCase() === 'developer' && m.id !== 'player' && !m.hasQuit);
+        const juniors = team.filter(m => m.role?.toLowerCase() === 'junior' && m.id !== 'player' && !m.hasQuit);
+        
+        // DESIGNER CONVERSATIONS
+        designers.forEach(designer => {
+            // Kerning Crisis - Design phase >50%, assigned, random chance
+            const designerProject = projects.find(p => 
+                p.phases?.design?.teamAssigned?.includes(designer.id) &&
+                ['active', 'ready'].includes(p.phases?.design?.status) &&
+                (p.phases?.design?.progress || 0) > 0.5
+            );
+            
+            if (designerProject && Math.random() < 0.08) { // 8% per check
+                const conversationId = `designer_kerning_crisis_${designer.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('designer_kerning_crisis')) {
+                    queueConversationWithMember('designer_kerning_crisis', designerProject.id, designer);
+                }
+            }
+            
+            // Extension Request - Project in warning, designer assigned
+            const warningProject = projects.find(p =>
+                p.phases?.design?.teamAssigned?.includes(designer.id) &&
+                p.status === 'warning'
+            );
+            
+            if (warningProject) {
+                const conversationId = `designer_extension_request_${designer.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('designer_extension_request')) {
+                    queueConversationWithMember('designer_extension_request', warningProject.id, designer);
+                }
+            }
+        });
+        
+        // DEVELOPER CONVERSATIONS
+        developers.forEach(developer => {
+            // Scope Cut Suggestion - Warning project, <2 weeks remaining
+            const devWarningProject = projects.find(p =>
+                p.phases?.development?.teamAssigned?.includes(developer.id) &&
+                p.status === 'warning' &&
+                p.weeksRemaining < 2
+            );
+            
+            if (devWarningProject) {
+                const conversationId = `developer_scope_cut_${developer.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('developer_scope_cut')) {
+                    queueConversationWithMember('developer_scope_cut', devWarningProject.id, developer);
+                }
+            }
+            
+            // LinkedIn Threat - Low morale OR player overtime
+            if (developer.morale?.current < 50 || (player && player.hours < -20)) {
+                const conversationId = `developer_linkedin_threat_${developer.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('developer_linkedin_threat')) {
+                    queueConversationWithMember('developer_linkedin_threat', null, developer);
+                }
+            }
+            
+            // Stupid Client Idea - Random during dev phase
+            const devProject = projects.find(p =>
+                p.phases?.development?.teamAssigned?.includes(developer.id) &&
+                ['active', 'ready'].includes(p.phases?.development?.status)
+            );
+            
+            if (devProject && Math.random() < 0.05) { // 5% per check
+                const conversationId = `developer_stupid_idea_${developer.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('developer_stupid_idea')) {
+                    queueConversationWithMember('developer_stupid_idea', devProject.id, developer);
+                }
+            }
+        });
+        
+        // JUNIOR CONVERSATIONS
+        juniors.forEach(junior => {
+            // Needs Help - Any assignment, random
+            const hasAssignment = hasPhaseAssignment(junior.id);
+            
+            if (hasAssignment && Math.random() < 0.06) {
+                const conversationId = `junior_needs_help_${junior.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('junior_needs_help')) {
+                    queueConversationWithMember('junior_needs_help', null, junior);
+                }
+            }
+            
+            // Brilliant Idea - Low probability, high morale
+            if (hasAssignment && junior.morale?.current > 70 && Math.random() < 0.04) {
+                const conversationId = `junior_brilliant_idea_${junior.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('junior_brilliant_idea')) {
+                    queueConversationWithMember('junior_brilliant_idea', null, junior);
+                }
+            }
+        });
+    }
+
+    // Check project status for client conversations  
+    function checkProjectStatusConversations() {
+        const projects = window.GameState.projects;
+        const resolved = window.GameState.resolvedConversations || [];
+        
+        projects.forEach(project => {
+            if (project.status === 'complete') return;
+            
+            // Scope Creep - mid-project (40-80% complete)
+            const overallProgress = project.progress || 0;
+            if (overallProgress > 0.4 && overallProgress < 0.8 && Math.random() < 0.04) {
+                const conversationId = `client_scope_creep_${project.id}`;
+                if (!resolved.includes(conversationId) && !resolved.includes('client_scope_creep_generic')) {
+                    queueConversation('client_scope_creep_generic', project.id);
+                }
+            }
+        });
+        
+        // Payment Delay - before payroll week (every 4 weeks)
+        if (window.GameState.currentWeek % 4 === 0 && window.GameState.currentDay < 5) {
+            if (Math.random() < 0.15) {
+                const activeProject = projects.find(p => p.status === 'ok' && p.progress > 0.5);
+                if (activeProject && !resolved.includes('client_payment_delay')) {
+                    queueConversation('client_payment_delay', activeProject.id);
+                }
+            }
+        }
+    }
+
+    // Check burnout levels for wellness conversations
+    function checkBurnoutConversations() {
+        const player = window.GameState.team.find(m => m.id === 'player');
+        if (!player) return;
+        
+        const hour = window.GameState.currentHour || 9;
+        const resolved = window.GameState.resolvedConversations || [];
+        
+        // High burnout triggers more frequent reminders
+        if (player.burnout >= 70 && Math.random() < 0.2) {
+            if (!resolved.includes('burnout_critical_warning')) {
+                queueConversation('burnout_critical_warning');
+            }
+        }
+        
+        // Overtime weeks trigger conversation
+        if ((window.GameState.playerOvertimeWeeks || 0) >= 3) {
+            if (!resolved.includes('overtime_intervention')) {
+                queueConversation('overtime_intervention');
+            }
+        }
+    }
+
+    // Check capacity for project offers
+    function checkCapacityConversations() {
+        const projects = window.GameState.projects;
+        const activeProjects = projects.filter(p => p.status !== 'complete').length;
+        const resolved = window.GameState.resolvedConversations || [];
+        
+        // Quick job offer - under capacity
+        if (activeProjects < 3 && Math.random() < 0.08) {
+            if (!resolved.includes('quick_project_offer')) {
+                queueConversation('quick_project_offer');
+            }
+        }
+    }
+
+    // Helper to queue conversation with member context
+    function queueConversationWithMember(conversationId, projectId, member) {
+        // Store member mapping for placeholder replacement
+        if (!window.GameState.conversationMemberMap) {
+            window.GameState.conversationMemberMap = {};
+        }
+        window.GameState.conversationMemberMap[conversationId] = member.id;
+        
+        queueConversation(conversationId, projectId);
+    }
+
     function checkConditionalConversations() {
         if (!Array.isArray(window.AllConversations)) return;
         if (window.currentConversation !== null) return;
+        
+        // Prevent spam - only check once per hour
+        const checkKey = `${window.GameState.currentWeek}-${window.GameState.currentDay}-${window.GameState.currentHour}`;
+        if (window.GameState._lastConditionalCheck === checkKey) return;
+        window.GameState._lastConditionalCheck = checkKey;
+
+        // Run modular conversation checks
+        checkClientSilence();
+        checkWorkerMoraleConversations();
+        checkProjectStatusConversations();
+        checkBurnoutConversations();
+        checkCapacityConversations();
 
         const player = window.GameState.team.find(m => m.id === 'player');
         const playerBurnout = player ? (player.burnout || 0) : 0;
@@ -1048,6 +1327,7 @@ const ConversationsModule = (function() {
             const member = getMemberById(memberId);
             if (member) {
                 replacements['{Worker}'] = member.name;
+                replacements['{{MEMBER}}'] = member.name; // Double braces for choice text display
                 // Also replace common role-based placeholders
                 replacements['{WorkerRole}'] = member.role || member.title || '';
             }
@@ -1157,11 +1437,20 @@ const ConversationsModule = (function() {
             result.subject = replaceInText(result.subject);
         }
         if (result.choices && Array.isArray(result.choices)) {
-            result.choices = result.choices.map(choice => ({
-                ...choice,
-                text: replaceInText(choice.text),
-                flavorText: replaceInText(choice.flavorText)
-            }));
+            result.choices = result.choices.map(choice => {
+                const processedChoice = {
+                    ...choice,
+                    text: replaceInText(choice.text),
+                    flavorText: replaceInText(choice.flavorText)
+                };
+                
+                // Also replace placeholders in consequences for display
+                if (choice.consequences) {
+                    processedChoice.consequences = replaceConsequencePlaceholders(choice.consequences, result);
+                }
+                
+                return processedChoice;
+            });
         }
 
         return result;

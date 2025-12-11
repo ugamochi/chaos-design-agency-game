@@ -2314,6 +2314,446 @@
         "flavorText": "You decline. They're disappointed but understand."
       }
     ]
+  },
+  {
+    "id": "designer_kerning_crisis",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "This kerning is making my eye twitch",
+    "body": "I know we're behind schedule, but this headline kerning is off by 2 pixels and I physically cannot unsee it. Give me 30 minutes to fix it?",
+    "choices": [
+      {
+        "id": "allow_fix",
+        "text": "Fix it. Quality matters.",
+        "flavorText": "{Worker}: 'Thank you. This is why I love working here.'",
+        "consequences": {
+          "teamMorale": { "delta": 8, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 5 }
+        }
+      },
+      {
+        "id": "ship_anyway",
+        "text": "We're shipping it. Deadline is Friday.",
+        "flavorText": "{Worker}: 'Fine. But I'm not putting this in my portfolio.'",
+        "consequences": {
+          "teamMorale": { "delta": -15, "memberId": "{{MEMBER}}" },
+          "spawnConversations": ["designer_quality_resentment"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "designer_extension_request",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "We need more time",
+    "body": "This project needs another week to be good. I can work weekend to get us close, but rushing means shipping mediocre work. What do you want?",
+    "choices": [
+      {
+        "id": "work_weekend",
+        "text": "Work the weekend. We can't extend.",
+        "flavorText": "{Worker}: 'Fine. But I'm burned out after this.'",
+        "consequences": {
+          "teamMorale": { "delta": -10, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 3 }
+        }
+      },
+      {
+        "id": "request_extension",
+        "text": "Ask the client for an extension.",
+        "flavorText": "Client grudgingly agrees to 3 more days.",
+        "consequences": {
+          "teamMorale": { "delta": 5, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -10 },
+          "scopeChange": { "projectId": "{{LINKED}}", "delta": 0, "timelineWeeks": 0.5 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "designer_quality_resentment",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "About that project...",
+    "body": "I saw the client posted screenshots on their social media. My name is attached to work I'm not proud of. This is exactly why I almost left my last agency.",
+    "choices": [
+      {
+        "id": "apologize",
+        "text": "I'm sorry. Next time we'll prioritize quality.",
+        "flavorText": "{Worker}: 'I hope so. I need to care about what I make.'",
+        "consequences": {
+          "teamMorale": { "delta": 3, "memberId": "{{MEMBER}}" }
+        }
+      },
+      {
+        "id": "business_realities",
+        "text": "Deadlines are business realities.",
+        "flavorText": "{Worker}: 'Then maybe this isn't the place for me.'",
+        "consequences": {
+          "teamMorale": { "delta": -15, "memberId": "{{MEMBER}}" }
+        }
+      }
+    ]
+  },
+  {
+    "id": "developer_scope_cut",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "Reality check needed",
+    "body": "This feature list is impossible by Friday. We can build 80% of this in the time we have, or ship 20% of a 'perfect' version. Pick one.",
+    "choices": [
+      {
+        "id": "cut_scope",
+        "text": "Cut the nice-to-haves. Ship the core.",
+        "flavorText": "{Worker}: 'Smart. I'll have something working by Thursday.'",
+        "consequences": {
+          "teamMorale": { "delta": 5, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -5 }
+        }
+      },
+      {
+        "id": "push_for_all",
+        "text": "Client expects everything. Make it work.",
+        "flavorText": "{Worker}: 'This is going to be a disaster, but okay.'",
+        "consequences": {
+          "teamMorale": { "delta": -10, "memberId": "{{MEMBER}}" },
+          "playerBurnout": 15,
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -15 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "developer_linkedin_threat",
+    "week": 0,
+    "day": 0,
+    "urgency": "critical",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "We need to talk",
+    "body": "Got approached by a fintech startup. They're offering 30% more and no weekend work. I like it here, but I'm tired. What can you do?",
+    "choices": [
+      {
+        "id": "match_raise",
+        "text": "I'll match it if this project succeeds.",
+        "flavorText": "{Worker}: 'Okay. But I'm holding you to that.'",
+        "consequences": {
+          "teamMorale": { "delta": 5, "memberId": "{{MEMBER}}" },
+          "spawnConversations": ["developer_raise_reminder"]
+        }
+      },
+      {
+        "id": "let_go",
+        "text": "I can't match that. I understand if you leave.",
+        "flavorText": "{Worker} gives two weeks notice.",
+        "consequences": {
+          "teamMorale": { "delta": -40, "memberId": "{{MEMBER}}" }
+        }
+      }
+    ]
+  },
+  {
+    "id": "developer_stupid_idea",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "Client wants the site to 'breathe'",
+    "body": "Client just asked if we can 'make the homepage breathe more' and 'add some Main Character Energy.' I genuinely don't know what this means. Do you?",
+    "choices": [
+      {
+        "id": "add_animation",
+        "text": "Just add some subtle animation.",
+        "flavorText": "{Worker}: 'Fine. But I'm adding a passive-aggressive code comment.'",
+        "consequences": {
+          "teamMorale": { "delta": -3, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 10 }
+        }
+      },
+      {
+        "id": "push_back",
+        "text": "Ask them to be specific about what they want.",
+        "flavorText": "Client says 'you know, just make it pop!' (Still no idea)",
+        "consequences": {
+          "teamMorale": { "delta": 2, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -5 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "developer_raise_reminder",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "About that raise...",
+    "body": "The project shipped. We talked about a raise. I've been patient, but I need to know where I stand.",
+    "choices": [
+      {
+        "id": "honor_promise",
+        "text": "You're right. 15% raise starting next week.",
+        "flavorText": "{Worker}: 'Thank you. This means a lot.'",
+        "consequences": {
+          "money": -500,
+          "teamMorale": { "delta": 20, "memberId": "{{MEMBER}}" }
+        }
+      },
+      {
+        "id": "delay_raise",
+        "text": "Let's revisit after the next project.",
+        "flavorText": "{Worker}: 'I see. I'll keep that LinkedIn tab open.'",
+        "consequences": {
+          "teamMorale": { "delta": -25, "memberId": "{{MEMBER}}" }
+        }
+      }
+    ]
+  },
+  {
+    "id": "junior_needs_help",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "I'm stuck on something",
+    "body": "I've been staring at this for 2 hours and I don't want to bother the seniors again. Can you take a look? Or should I keep trying?",
+    "choices": [
+      {
+        "id": "help_directly",
+        "text": "Let me look. Learning is part of the job.",
+        "flavorText": "You spend 30 minutes walking through the problem. {Worker} gets it now.",
+        "consequences": {
+          "teamMorale": { "delta": 8, "memberId": "{{MEMBER}}" },
+          "playerBurnout": 5
+        }
+      },
+      {
+        "id": "assign_senior",
+        "text": "Pair up with a senior for 30 minutes.",
+        "flavorText": "The senior helps but seems a bit annoyed at the interruption.",
+        "consequences": {
+          "teamMorale": { "delta": 3, "memberId": "{{MEMBER}}" },
+          "teamMorale": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "junior_brilliant_idea",
+    "week": 0,
+    "day": 0,
+    "urgency": "low",
+    "from": "{Worker} ({WorkerRole})",
+    "subject": "Crazy idea, hear me out",
+    "body": "What if we added a gamification layer to the client's dashboard? I mocked it up this weekend. It's probably dumb but... what do you think?",
+    "choices": [
+      {
+        "id": "run_with_it",
+        "text": "This is actually brilliant. Let's pitch it to the client.",
+        "flavorText": "{Worker}'s face lights up. 'Wait, really?!'",
+        "consequences": {
+          "teamMorale": { "delta": 15, "memberId": "{{MEMBER}}" },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 8 }
+        }
+      },
+      {
+        "id": "shelve_it",
+        "text": "Good thinking, but let's stay focused on the spec.",
+        "flavorText": "{Worker}: 'Yeah, okay. I figured.'",
+        "consequences": {
+          "teamMorale": { "delta": -5, "memberId": "{{MEMBER}}" }
+        }
+      }
+    ]
+  },
+  {
+    "id": "client_scope_creep_generic",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Client Contact",
+    "subject": "Quick addition?",
+    "body": "I know we're almost done, but I just thought of something that would really elevate this. It's small - just add a user dashboard with login system. Shouldn't take long, right?",
+    "linkedProjectId": "{{PROJECT}}",
+    "choices": [
+      {
+        "id": "accept_scope",
+        "text": "Sure, we can add that.",
+        "flavorText": "Client: 'Amazing! Oh and while you're at it...'",
+        "consequences": {
+          "scopeChange": {
+            "projectId": "{{LINKED}}",
+            "delta": 0.2,
+            "timelineWeeks": 1,
+            "teamStress": -8
+          },
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 10 },
+          "spawnConversations": ["client_scope_creep_followup"]
+        }
+      },
+      {
+        "id": "decline_scope",
+        "text": "That's a new feature - separate project and budget.",
+        "flavorText": "Client: 'Oh. I thought you'd be more flexible...'",
+        "consequences": {
+          "teamMorale": 5,
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -15 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "client_scope_creep_followup",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "Client Contact",
+    "subject": "One more tiny thing",
+    "body": "While you're doing the dashboard, can you also add an admin panel? And maybe a reporting feature? It's basically the same code, right?",
+    "linkedProjectId": "{{PROJECT}}",
+    "choices": [
+      {
+        "id": "accept_more",
+        "text": "Okay, but this is absolutely the last addition.",
+        "flavorText": "Your team groans. The scope has officially crept into chaos.",
+        "consequences": {
+          "teamMorale": -12,
+          "scopeChange": {
+            "projectId": "{{LINKED}}",
+            "delta": 0.3,
+            "timelineWeeks": 1.5
+          }
+        }
+      },
+      {
+        "id": "hard_stop",
+        "text": "No. We need to draw the line here.",
+        "flavorText": "Client huffs but accepts. Your team breathes a sigh of relief.",
+        "consequences": {
+          "teamMorale": 8,
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -8 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "client_ghost_return",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "Client Contact",
+    "subject": "Back! Need changes ASAP",
+    "body": "Sorry for disappearing - crazy month! Anyway, I need major revisions by end of week. You've been working on this in the meantime, right?",
+    "linkedProjectId": "{{PROJECT}}",
+    "choices": [
+      {
+        "id": "stop_work",
+        "text": "We stopped work after 7 days of silence per contract.",
+        "flavorText": "Client: 'That's... technically fair but really inconvenient.'",
+        "consequences": {
+          "teamMorale": 3,
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": -20 }
+        }
+      },
+      {
+        "id": "scramble",
+        "text": "We'll make it happen.",
+        "flavorText": "Your team scrambles. Weekend work is now mandatory.",
+        "consequences": {
+          "teamMorale": -12,
+          "playerBurnout": 15,
+          "clientSatisfaction": { "projectId": "{{LINKED}}", "delta": 8 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "quick_project_offer",
+    "week": 0,
+    "day": 0,
+    "urgency": "medium",
+    "from": "Potential Client",
+    "subject": "Quick logo project - $3k",
+    "body": "Need a logo redesign. Simple, clean, modern. 1 week turnaround. $3k budget. Interested?",
+    "choices": [
+      {
+        "id": "accept_quick_job",
+        "text": "We can handle it.",
+        "flavorText": "Quick money, but your team is now juggling one more thing.",
+        "consequences": {
+          "money": 600,
+          "teamMorale": -5,
+          "quickJobsCompleted": 1
+        }
+      },
+      {
+        "id": "decline_quick_job",
+        "text": "We're at capacity, sorry.",
+        "flavorText": "They understand. Probably.",
+        "consequences": {}
+      }
+    ]
+  },
+  {
+    "id": "burnout_critical_warning",
+    "week": 0,
+    "day": 0,
+    "urgency": "critical",
+    "from": "Your Body",
+    "subject": "⚠️ Warning signs",
+    "body": "Chest tight. Head pounding. Haven't slept properly in days. Your body is trying to tell you something.",
+    "choices": [
+      {
+        "id": "take_sick_day",
+        "text": "Call in sick tomorrow. Rest.",
+        "flavorText": "You cancel meetings and actually sleep. It helps.",
+        "consequences": {
+          "playerBurnout": -20
+        }
+      },
+      {
+        "id": "power_through",
+        "text": "Pop some ibuprofen and keep going.",
+        "flavorText": "The painkillers help for now. But you know this isn't sustainable.",
+        "consequences": {
+          "playerBurnout": 10
+        }
+      }
+    ]
+  },
+  {
+    "id": "overtime_intervention",
+    "week": 0,
+    "day": 0,
+    "urgency": "high",
+    "from": "A Senior Team Member",
+    "subject": "We're worried about you",
+    "body": "You've worked overtime for three weeks straight. The team noticed. We care about you. Please take care of yourself - we can cover for a day if needed.",
+    "choices": [
+      {
+        "id": "accept_help",
+        "text": "You're right. Let me delegate some tasks.",
+        "flavorText": "The team steps up. You feel supported.",
+        "consequences": {
+          "playerBurnout": -15,
+          "teamMorale": 5
+        }
+      },
+      {
+        "id": "decline_help",
+        "text": "I appreciate it, but I've got this.",
+        "flavorText": "They look concerned but respect your decision.",
+        "consequences": {
+          "playerBurnout": 5
+        }
+      }
+    ]
   }
 ]
-

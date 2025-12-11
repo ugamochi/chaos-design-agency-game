@@ -394,6 +394,9 @@
     "name": "Olya",
     "role": "Support",
     "skill": 1,
+    "isSpecialCharacter": true,
+    "startsInTeam": false,
+    "unlockCondition": "TBD",
     "bio": "Your supportive girlfriend who helps out around the agency. Doesn't have professional skills but always willing to pitch in at 25% efficiency.",
     "characteristics": {
       "oftenGetsIll": false,

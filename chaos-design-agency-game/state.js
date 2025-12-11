@@ -36,7 +36,23 @@ const GameStateModule = (function() {
     gameOver: false,
     victoryPath: null,
     lastSalaryMonth: -1, // Track which month (week / 4) we last paid salaries (-1 means not paid yet)
-    isManuallyPaused: false // Manual pause state (user-controlled)
+    isManuallyPaused: false, // Manual pause state (user-controlled)
+    
+    // Conversation tracking fields (for conditional triggers)
+    weekendsWorked: 0,              // Track player weekend work
+    micromanagementCount: 0,        // Track how many times player checks in on workers
+    clientCheckInsPerProject: {},   // { projectId: count } - track client communication frequency
+    lastClientResponseTime: {},     // { projectId: timestamp } - track client silence
+    quickJobsCompleted: 0,          // Track quick project offers accepted
+    playerOvertimeWeeks: 0,         // Consecutive weeks player worked overtime
+    conversationMemberMap: {},      // Map conversation IDs to triggering member IDs
+    
+    // Weekend choice tracking
+    consecutiveWeekendsWorked: 0,   // Track streak of weekends team worked
+    weekendChoices: [],             // History: ['rest', 'solo', 'team', ...]
+    lastWeekendChoice: null,        // Last choice made
+    teamWeekendsWorked: 0,          // Total times team worked weekends
+    playerWeekendsWorked: 0         // Total times player worked weekends
 };
 
     let AllConversations = [];
@@ -108,6 +124,23 @@ const GameStateModule = (function() {
     GameState.gameOver = false;
     GameState.victoryPath = null;
     GameState.lastSalaryMonth = -1;
+    GameState.isManuallyPaused = false;
+    
+    // Reset conversation tracking fields
+    GameState.weekendsWorked = 0;
+    GameState.micromanagementCount = 0;
+    GameState.clientCheckInsPerProject = {};
+    GameState.lastClientResponseTime = {};
+    GameState.quickJobsCompleted = 0;
+    GameState.playerOvertimeWeeks = 0;
+    GameState.conversationMemberMap = {};
+    
+    // Reset weekend choice tracking
+    GameState.consecutiveWeekendsWorked = 0;
+    GameState.weekendChoices = [];
+    GameState.lastWeekendChoice = null;
+    GameState.teamWeekendsWorked = 0;
+    GameState.playerWeekendsWorked = 0;
     
     if (window.OfficeVisualization && window.OfficeVisualization.reset) {
         window.OfficeVisualization.reset();
