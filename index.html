@@ -9,19 +9,26 @@
         // Set base path for GitHub Pages vs local development
         (function() {
             const pathname = window.location.pathname;
-            const isGitHubPages = pathname.includes('/chaos-design-agency-game/');
-            window.GAME_BASE_PATH = isGitHubPages ? '' : './chaos-design-agency-game/';
-            if (isGitHubPages) {
-                const base = document.createElement('base');
-                base.href = '/chaos-design-agency-game/';
-                document.head.insertBefore(base, document.head.firstChild);
-            }
+            const hostname = window.location.hostname;
+            // Check if we're on GitHub Pages (either by hostname or pathname)
+            // Pathname could be '/chaos-design-agency-game/', '/chaos-design-agency-game', or '/'
+            const isGitHubPages = hostname.includes('github.io') || 
+                                  pathname.includes('/chaos-design-agency-game') || 
+                                  (pathname === '/' && hostname !== 'localhost' && hostname !== '127.0.0.1');
+            // On GitHub Pages, files are at /chaos-design-agency-game/chaos-design-agency-game/
+            // Locally, files are at ./chaos-design-agency-game/
+            window.GAME_BASE_PATH = isGitHubPages ? '/chaos-design-agency-game/chaos-design-agency-game/' : './chaos-design-agency-game/';
+            console.log('GAME_BASE_PATH set to:', window.GAME_BASE_PATH, 'isGitHubPages:', isGitHubPages, 'pathname:', pathname, 'hostname:', hostname);
         })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="chaos-design-agency-game/styles.css">
+    <link rel="stylesheet" href="" id="stylesLink">
+    <script>
+        // Set stylesheet path after GAME_BASE_PATH is defined
+        document.getElementById('stylesLink').href = window.GAME_BASE_PATH + 'styles.css';
+    </script>
 </head>
 <body>
     <div class="game-container">
@@ -268,18 +275,43 @@
         </div>
     </div>
 
-    <script src="chaos-design-agency-game/utils.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/constants.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/dom-helpers.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/logger.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/state.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/projects.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/conversations.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/tutorial.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/animations.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/office-visualization.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/timer.js?v=20241205-1600"></script>
-    <script src="chaos-design-agency-game/ui.js?v=20241205-1700"></script>
-    <script src="chaos-design-agency-game/game.js?v=20241205-1600"></script>
+    <script>
+        // Load all scripts sequentially using GAME_BASE_PATH to maintain dependency order
+        (function() {
+            const scripts = [
+                'utils.js',
+                'constants.js',
+                'dom-helpers.js',
+                'logger.js',
+                'state.js',
+                'projects.js',
+                'conversations.js',
+                'tutorial.js',
+                'animations.js',
+                'office-visualization.js',
+                'timer.js',
+                'ui.js',
+                'game.js'
+            ];
+            
+            function loadScript(index) {
+                if (index >= scripts.length) return;
+                
+                const script = scripts[index];
+                const scriptEl = document.createElement('script');
+                scriptEl.src = window.GAME_BASE_PATH + script + '?v=20241205-1600';
+                scriptEl.onerror = function() {
+                    console.error('Failed to load script:', scriptEl.src);
+                    loadScript(index + 1);
+                };
+                scriptEl.onload = function() {
+                    loadScript(index + 1);
+                };
+                document.body.appendChild(scriptEl);
+            }
+            
+            loadScript(0);
+        })();
+    </script>
 </body>
 </html>

@@ -5,7 +5,9 @@ const GameModule = (function() {
 
     async function initGame() {
         try {
-            const basePath = window.GAME_BASE_PATH || (window.location.pathname.includes('/chaos-design-agency-game/') ? '' : './chaos-design-agency-game/');
+            // Use GAME_BASE_PATH set in index.html, with fallback for edge cases
+            const basePath = window.GAME_BASE_PATH || (window.location.hostname.includes('github.io') || window.location.pathname.includes('/chaos-design-agency-game/') ? '/chaos-design-agency-game/chaos-design-agency-game/' : './chaos-design-agency-game/');
+            console.log('Loading JSON files from basePath:', basePath);
             window.setAllConversations(await Utils.loadJson(basePath + 'conversations.json'));
             window.setAllTeamMembers(await Utils.loadJson(basePath + 'characters.json'));
             window.setAllProjectTemplates(await Utils.loadJson(basePath + 'projects.json'));
