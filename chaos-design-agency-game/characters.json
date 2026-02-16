@@ -138,8 +138,8 @@
     }
   },
   {
-    "id": "pasha_manager",
-    "name": "Pasha",
+    "id": "mike_manager",
+    "name": "Mike",
     "role": "Manager",
     "skill": 3,
     "bio": "Organized manager who keeps everything running smoothly. Stays calm under pressure and handles stress like a pro.",
@@ -395,8 +395,7 @@
     "role": "Support",
     "skill": 1,
     "isSpecialCharacter": true,
-    "startsInTeam": false,
-    "unlockCondition": "TBD",
+    "startsInTeam": true,
     "bio": "Your supportive girlfriend who helps out around the agency. Doesn't have professional skills but always willing to pitch in at 25% efficiency.",
     "characteristics": {
       "oftenGetsIll": false,

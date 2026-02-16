@@ -330,7 +330,9 @@ const ProjectsModule = (function() {
         // BUG FIX #5: Clamp design quality to 0-1 range
         const designQuality = Math.max(0, Math.min(1, (avgSkill / 5) * (avgMorale / 100)));
 
-        const expectedProgress = 1 - (project.weeksRemaining / project.totalWeeks);
+        // BUG FIX #13: Protect against division by zero
+        const totalWeeks = project.totalWeeks || 1;
+        const expectedProgress = 1 - (project.weeksRemaining / totalWeeks);
         const progressDelta = project.progress - expectedProgress;
         // BUG FIX #5: Clamp meeting deadlines to 0-1 range
         const meetingDeadlines = Math.max(0, Math.min(1, 0.5 + progressDelta));
@@ -1501,7 +1503,10 @@ const ProjectsModule = (function() {
             if (project.weeksRemaining < 2) urgencyScore += 200;
             
             // Low progress relative to time remaining
-            const progressRatio = project.progress / (1 - (project.weeksRemaining / project.totalWeeks));
+            // BUG FIX #13: Protect against division by zero
+            const totalWeeks = project.totalWeeks || 1;
+            const expectedProgress = 1 - (project.weeksRemaining / totalWeeks);
+            const progressRatio = expectedProgress > 0 ? project.progress / expectedProgress : 1;
             if (progressRatio < 0.5) urgencyScore += 100;
             
             // Determine active phase

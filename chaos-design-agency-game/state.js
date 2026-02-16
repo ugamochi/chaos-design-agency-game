@@ -383,18 +383,45 @@ const GameStateModule = (function() {
 
     /**
      * Check burnout thresholds and trigger events
+     * BUG FIX #11: Actually trigger events, not just log
      */
     function checkBurnoutThresholds(member, oldBurnout) {
         const newBurnout = member.burnout;
         
         if (oldBurnout < 60 && newBurnout >= 60) {
             console.warn(`[BURNOUT WARNING] ${member.name} reached 60%!`);
-            // Could queue conversation here: queueConversation('burnout_warning');
+            
+            // Add key moment
+            if (window.recordKeyMoment) {
+                window.recordKeyMoment(
+                    'Burnout Warning',
+                    `Your burnout reached 60%. Some conversation choices may be blocked.`,
+                    'crisis'
+                );
+            }
+            
+            // Show warning toast
+            if (window.showWarningToast) {
+                window.showWarningToast('⚠️ Burnout at 60%! Take a break or call in sick.', 4000);
+            }
         }
         
         if (oldBurnout < 80 && newBurnout >= 80) {
             console.error(`[BURNOUT CRITICAL] ${member.name} reached 80%!`);
-            // Could queue conversation here: queueConversation('burnout_critical');
+            
+            // Add key moment
+            if (window.recordKeyMoment) {
+                window.recordKeyMoment(
+                    'Critical Burnout',
+                    `Your burnout reached 80%! You're at high risk of making poor decisions.`,
+                    'crisis'
+                );
+            }
+            
+            // Show critical warning
+            if (window.showWarningToast) {
+                window.showWarningToast('🔥 CRITICAL BURNOUT at 80%! Call in sick immediately!', 5000);
+            }
         }
     }
 

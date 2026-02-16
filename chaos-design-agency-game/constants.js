@@ -13,6 +13,10 @@ const GameConstants = {
     WORK_DAY_START: 9,
     WORK_DAY_END: 18,
     BASE_HOURS_PER_DAY: 8,
+    HOURS_PER_WEEK: 40,           // BUG FIX #16: Added constant for weekly hours
+    HOURS_PER_TICK: 0.1,          // BUG FIX #16: Added constant for tick hours
+    TICK_INTERVAL: 100,           // BUG FIX #16: Added constant for tick interval (ms)
+    DAYS_ON_ASSIGNMENT_OVERWORKED: 10, // BUG FIX #16: Days before overwork penalty
     
     // Economics
     WEEKLY_PAYROLL_PER_MEMBER: 600, // Deprecated

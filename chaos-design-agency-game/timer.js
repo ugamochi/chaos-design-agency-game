@@ -172,8 +172,10 @@ const TimerModule = (function() {
 
                 // Reset weekly hours at start of new week
                 window.resetWeeklyHours = window.resetWeeklyHours || function() {
+                    const C = window.GameConstants || {};
+                    const weeklyHours = C.HOURS_PER_WEEK || 40;
                     window.GameState.team.forEach(member => {
-                        member.hours = 40;
+                        member.hours = weeklyHours;
                         member.hoursWorkedThisWeek = 0;
                         // Reset overtime flags for new week
                         member.overtimeWarningShown = false;
