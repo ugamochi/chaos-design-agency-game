@@ -162,92 +162,102 @@ const ProjectsModule = (function() {
         const HOURS_PER_DAY = 8;
         const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125
 
+        // BUG FIX #2: Apply gradual decay FIRST, then other changes
+        // This prevents double-counting and race conditions
         window.GameState.team.forEach(member => {
-        if (member.id === 'player') return;
+            if (member.id === 'player') return;
+            
+            // Apply gradual decay to all non-player members
+            if (member.morale && typeof member.morale.current === 'number') {
+                const gradualDecay = -0.5 * tickMultiplier;
+                window.adjustMemberMorale(member, gradualDecay);
+            }
+        });
 
-        if (typeof member.lowMoraleTriggered !== 'boolean') {
-            member.lowMoraleTriggered = false;
-        }
-        if (typeof member.highMoraleTriggered !== 'boolean') {
-            member.highMoraleTriggered = false;
-        }
+        // Then apply other morale changes
+        window.GameState.team.forEach(member => {
+            if (member.id === 'player') return;
 
-        const characteristics = member.characteristics || {};
-        
-        if (characteristics.doesNotLoseMorale) {
+            if (typeof member.lowMoraleTriggered !== 'boolean') {
+                member.lowMoraleTriggered = false;
+            }
+            if (typeof member.highMoraleTriggered !== 'boolean') {
+                member.highMoraleTriggered = false;
+            }
+
+            const characteristics = member.characteristics || {};
+            
+            if (characteristics.doesNotLoseMorale) {
+                if (member.currentAssignment) {
+                    // Only increment days on assignment once per day, not per tick
+                    if (!member._lastDayCheck || member._lastDayCheck !== window.GameState.currentDay) {
+                        member.daysOnAssignment++;
+                        member._lastDayCheck = window.GameState.currentDay;
+                    }
+                }
+                return;
+            }
+
+            let moraleChange = 0;
+
+            if (member.currentAssignment && member.daysOnAssignment > 10 && member.morale && member.morale.modifiers) {
+                moraleChange += member.morale.modifiers.overworked || -5;
+            }
+
+            if (playerBurnout > 50) {
+                const burnoutPenalty = Math.round((playerBurnout - 50) / 10);
+                moraleChange -= burnoutPenalty;
+            }
+
+            if (!member.currentAssignment && !member.isIll) {
+                moraleChange -= 2;
+            }
+
+            // Scale the change to tick rate
+            moraleChange *= tickMultiplier;
+            
+            // Apply the combined morale change
+            if (moraleChange !== 0) {
+                window.adjustMemberMorale(member, moraleChange);
+            }
+
             if (member.currentAssignment) {
                 // Only increment days on assignment once per day, not per tick
-                // Track this separately or check if we've crossed a day boundary
                 if (!member._lastDayCheck || member._lastDayCheck !== window.GameState.currentDay) {
                     member.daysOnAssignment++;
                     member._lastDayCheck = window.GameState.currentDay;
                 }
             }
-            return;
-        }
 
-        let moraleChange = 0;
-
-        if (member.currentAssignment && member.daysOnAssignment > 10 && member.morale && member.morale.modifiers) {
-            moraleChange += member.morale.modifiers.overworked || -5;
-        }
-
-        if (playerBurnout > 50) {
-            const burnoutPenalty = Math.round((playerBurnout - 50) / 10);
-            moraleChange -= burnoutPenalty;
-        }
-
-        if (!member.currentAssignment && !member.isIll) {
-            moraleChange -= 2;
-        }
-
-        // Scale the change to tick rate
-        moraleChange *= tickMultiplier;
-        window.adjustMemberMorale(member, moraleChange);
-        
-        if (member.morale && typeof member.morale.current === 'number') {
-            const gradualDecay = -0.5 * tickMultiplier;
-            window.adjustMemberMorale(member, gradualDecay);
-        }
-
-        if (member.currentAssignment) {
-            // Only increment days on assignment once per day, not per tick
-            if (!member._lastDayCheck || member._lastDayCheck !== window.GameState.currentDay) {
-                member.daysOnAssignment++;
-                member._lastDayCheck = window.GameState.currentDay;
+            if (!member.morale || typeof member.morale.current !== 'number') {
+                return;
             }
-        }
+            
+            const currentMorale = member.morale.current;
+            if (currentMorale < 25 && !member.lowMoraleTriggered) {
+                window.triggerTeamEvent(member, 'low_morale');
+                member.lowMoraleTriggered = true;
+            } else if (currentMorale >= 30) {
+                member.lowMoraleTriggered = false;
+            }
 
-        if (!member.morale || typeof member.morale.current !== 'number') {
-            return;
-        }
-        
-        const currentMorale = member.morale.current;
-        if (currentMorale < 25 && !member.lowMoraleTriggered) {
-            window.triggerTeamEvent(member, 'low_morale');
-            member.lowMoraleTriggered = true;
-        } else if (currentMorale >= 30) {
-            member.lowMoraleTriggered = false;
-        }
-
-        if (currentMorale > 85 && !member.highMoraleTriggered) {
-            window.triggerTeamEvent(member, 'high_morale');
-            member.highMoraleTriggered = true;
-        } else if (currentMorale <= 80) {
-            member.highMoraleTriggered = false;
-        }
-    });
+            if (currentMorale > 85 && !member.highMoraleTriggered) {
+                window.triggerTeamEvent(member, 'high_morale');
+                member.highMoraleTriggered = true;
+            } else if (currentMorale <= 80) {
+                member.highMoraleTriggered = false;
+            }
+        });
     
+        // Handle player morale separately
         if (player && !player.currentAssignment && !player.isIll) {
-            const HOURS_PER_TICK = 0.1;
-            const HOURS_PER_DAY = 8;
-            const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY;
             const playerMoraleChange = -1 * tickMultiplier;
             if (player.morale && typeof player.morale.current === 'number') {
                 window.adjustMemberMorale(player, playerMoraleChange);
             }
         }
 
+        // BUG FIX #2: Recalculate team morale ONCE at the end
         window.recalculateTeamMorale();
 }
 
@@ -300,56 +310,62 @@ const ProjectsModule = (function() {
             (m.currentAssignment === project.id) // backward compatibility
         );
 
-    const avgSkill = assignedMembers.length
-        ? assignedMembers.reduce((sum, m) => {
-            let effectiveSkill = m.skill || 1;
-            const characteristics = m.characteristics || {};
-            if (m.specialProperties && m.specialProperties.efficiencyMultiplier) {
-                effectiveSkill *= m.specialProperties.efficiencyMultiplier;
-            }
-            if (characteristics.qualityMultiplier) {
-                effectiveSkill *= characteristics.qualityMultiplier;
-            }
-            return sum + effectiveSkill;
-        }, 0) / assignedMembers.length
-        : 2.5;
-    const avgMorale = assignedMembers.length
-        ? assignedMembers.reduce((sum, m) => sum + (m.morale?.current || 50), 0) / assignedMembers.length
-        : window.GameState.teamMorale || 50;
-    const designQuality = Math.min(1, (avgSkill / 5) * (avgMorale / 100));
+        const avgSkill = assignedMembers.length
+            ? assignedMembers.reduce((sum, m) => {
+                let effectiveSkill = m.skill || 1;
+                const characteristics = m.characteristics || {};
+                if (m.specialProperties && m.specialProperties.efficiencyMultiplier) {
+                    effectiveSkill *= m.specialProperties.efficiencyMultiplier;
+                }
+                if (characteristics.qualityMultiplier) {
+                    effectiveSkill *= characteristics.qualityMultiplier;
+                }
+                return sum + effectiveSkill;
+            }, 0) / assignedMembers.length
+            : 2.5;
+        const avgMorale = assignedMembers.length
+            ? assignedMembers.reduce((sum, m) => sum + (m.morale?.current || 50), 0) / assignedMembers.length
+            : window.GameState.teamMorale || 50;
+        
+        // BUG FIX #5: Clamp design quality to 0-1 range
+        const designQuality = Math.max(0, Math.min(1, (avgSkill / 5) * (avgMorale / 100)));
 
-    const expectedProgress = 1 - (project.weeksRemaining / project.totalWeeks);
-    const progressDelta = project.progress - expectedProgress;
-    const meetingDeadlines = Math.max(0, Math.min(1, 0.5 + progressDelta));
+        const expectedProgress = 1 - (project.weeksRemaining / project.totalWeeks);
+        const progressDelta = project.progress - expectedProgress;
+        // BUG FIX #5: Clamp meeting deadlines to 0-1 range
+        const meetingDeadlines = Math.max(0, Math.min(1, 0.5 + progressDelta));
 
-    const responseHours = project.lastResponseHours ?? 24;
-    const responsiveness = Math.max(0, Math.min(1, responseHours <= 4 ? 1 : 4 / responseHours));
+        const responseHours = project.lastResponseHours ?? 24;
+        // BUG FIX #5: Clamp responsiveness to 0-1 range
+        const responsiveness = Math.max(0, Math.min(1, responseHours <= 4 ? 1 : 4 / responseHours));
 
-    const budgetStatus = project.budgetStatus ?? 1;
+        const budgetStatus = project.budgetStatus ?? 1;
 
-    return {
-        designQuality,
-        meetingDeadlines,
-        responsiveness,
-        stayingInBudget: Math.max(0, Math.min(1, budgetStatus))
-    };
-}
+        // BUG FIX #5: All factors already clamped to 0-1
+        return {
+            designQuality,
+            meetingDeadlines,
+            responsiveness,
+            stayingInBudget: Math.max(0, Math.min(1, budgetStatus))
+        };
+    }
 
     function updateProjectSatisfaction(project) {
-    const profile = getClientProfile(project);
-    const weights = profile.satisfactionFactors;
-    const scores = calculateSatisfactionScores(project);
+        const profile = getClientProfile(project);
+        const weights = profile.satisfactionFactors;
+        const scores = calculateSatisfactionScores(project);
 
-    const satisfaction =
-        (scores.designQuality * (weights.designQuality || 0)) +
-        (scores.meetingDeadlines * (weights.meetingDeadlines || 0)) +
-        (scores.responsiveness * (weights.responsiveness || 0)) +
-        (scores.stayingInBudget * (weights.stayingInBudget || 0));
+        const satisfaction =
+            (scores.designQuality * (weights.designQuality || 0)) +
+            (scores.meetingDeadlines * (weights.meetingDeadlines || 0)) +
+            (scores.responsiveness * (weights.responsiveness || 0)) +
+            (scores.stayingInBudget * (weights.stayingInBudget || 0));
 
-    const normalized = Math.max(0, Math.min(1, satisfaction));
-    project.satisfaction = Math.round(normalized * 100);
-    updateProjectRisk(project);
-}
+        // BUG FIX #5: Clamp final satisfaction to 0-100 range
+        const normalized = Math.max(0, Math.min(1, satisfaction));
+        project.satisfaction = Math.round(normalized * 100);
+        updateProjectRisk(project);
+    }
 
     function handleScopeCreepRequest(change) {
         if (!change) return;
@@ -541,6 +557,15 @@ const ProjectsModule = (function() {
         
         if (phase.progress >= 1.0) {
             return 'complete';
+        }
+        
+        // BUG FIX #4: Check if phase has team assigned
+        const hasTeam = phase.teamAssigned && Array.isArray(phase.teamAssigned) && phase.teamAssigned.length > 0;
+        
+        // If phase is marked as active but has no team, revert to ready
+        if (phase.status === 'active' && !hasTeam) {
+            console.warn(`Phase ${phaseName} in project ${project.name} is active but has no team assigned. Reverting to ready.`);
+            phase.status = 'ready';
         }
         
         if (canStartPhase(project, phaseName)) {
@@ -772,14 +797,15 @@ const ProjectsModule = (function() {
             return; // No one working on this phase
         }
         
-        // Base progress rates (faster pacing!)
+        // Base progress rates per day (faster pacing!)
+        // These represent how much progress is made per day with 1.0 efficiency
         const baseProgressRates = {
-            management: 2.0,    // 10x faster
-            design: 1.5,        // 10x faster
-            development: 1.0,   // 10x faster
-            review: 1.8         // 10x faster
+            management: 2.0,    // Fast phase
+            design: 1.5,        // Medium-fast phase
+            development: 1.0,   // Slower phase (most complex)
+            review: 1.8         // Fast phase
         };
-        const baseProgress = baseProgressRates[phaseName] || 0.10;
+        const baseProgressPerDay = baseProgressRates[phaseName] || 0.10;
         
         // Calculate total efficiency from team
         // Hours are split across ALL assignments (projects + phases) for each worker
@@ -865,12 +891,15 @@ const ProjectsModule = (function() {
             totalEfficiency += freelancerEfficiency * (freelancerSkill / 5) * 1.5; // 1.5x multiplier
         }
         
-        // Calculate progress per tick (timer ticks every 0.1 seconds = 0.1 hours)
-        // Scale daily progress to tick-based: (0.1 hours / 8 hours per day) = 0.0125
+        // BUG FIX #8: Calculate progress per tick correctly
+        // baseProgressPerDay is progress per 8-hour work day
+        // Timer ticks every 0.1 hours, so we need to scale down
         const HOURS_PER_TICK = 0.1;
         const HOURS_PER_DAY = 8;
-        const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125
-        const tickProgress = baseProgress * totalEfficiency * tickMultiplier;
+        const tickMultiplier = HOURS_PER_TICK / HOURS_PER_DAY; // 0.0125 (1.25% of a day per tick)
+        
+        // Progress per tick = (progress per day) × (efficiency) × (fraction of day per tick)
+        const tickProgress = baseProgressPerDay * totalEfficiency * tickMultiplier;
         phase.progress = Math.min(1.0, phase.progress + tickProgress);
         
         // Update hours completed

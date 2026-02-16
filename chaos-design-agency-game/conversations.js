@@ -406,9 +406,25 @@ const ConversationsModule = (function() {
             return consequences;
         }
 
-        // Get member ID from conversationMemberMap
+        // BUG FIX #7: Validate conversationMemberMap exists and has mapping
         const memberId = conversation && window.GameState.conversationMemberMap && 
                          window.GameState.conversationMemberMap[conversation.id];
+        
+        // BUG FIX #7: If no mapping found, use fallback
+        let fallbackMemberId = null;
+        if (!memberId && conversation) {
+            console.warn(`No member mapping for conversation ${conversation.id}, using fallback`);
+            // Fallback to first non-player team member
+            const fallbackMember = window.GameState.team.find(m => m.id !== 'player' && !m.hasQuit);
+            if (fallbackMember) {
+                fallbackMemberId = fallbackMember.id;
+                console.log(`Using fallback member: ${fallbackMemberId}`);
+            } else {
+                console.error('No team members available for placeholder replacement');
+            }
+        }
+        
+        const effectiveMemberId = memberId || fallbackMemberId;
         
         // Get linked project ID
         const linkedProjectId = conversation?.linkedProjectId;
@@ -422,15 +438,23 @@ const ConversationsModule = (function() {
                 
                 if (typeof value === 'string') {
                     // Replace {{MEMBER}} with actual member ID
-                    if (value === '{{MEMBER}}' && memberId) {
-                        replaced[key] = memberId;
+                    if (value === '{{MEMBER}}') {
+                        if (effectiveMemberId) {
+                            replaced[key] = effectiveMemberId;
+                        } else {
+                            console.error(`Cannot replace {{MEMBER}} placeholder - no member ID available`);
+                        }
                     }
                     // Replace {{LINKED}} with linked project ID
-                    else if (value === '{{LINKED}}' && linkedProjectId) {
-                        replaced[key] = linkedProjectId;
+                    else if (value === '{{LINKED}}') {
+                        if (linkedProjectId) {
+                            replaced[key] = linkedProjectId;
+                        } else {
+                            console.error(`Cannot replace {{LINKED}} placeholder - no linked project ID`);
+                        }
                     }
                 } else if (typeof value === 'object' && value !== null) {
-                    // Recursively process nested objects
+                    // BUG FIX #7: Recursively process both objects AND arrays
                     replaced[key] = replaceConsequencePlaceholders(value, conversation);
                 }
             }
@@ -485,10 +509,14 @@ const ConversationsModule = (function() {
             const player = window.GameState.team.find(m => m.id === 'player');
             if (player && window.adjustBurnout) {
                 const conversationSubject = conversation?.subject || conversation?.title || 'Unknown conversation';
-                // REDUCED RELIEF: Make burnout relief 40% less effective for urgency
+                // BUG FIX #6: Use constant for burnout relief effectiveness
+                const C = window.GameConstants || {};
+                const reliefEffectiveness = C.BURNOUT_RELIEF_EFFECTIVENESS || 0.60;
+                
+                // REDUCED RELIEF: Make burnout relief less effective for urgency
                 // Burnout is harder to reduce - player must make strategic choices
                 const reliefAmount = consequences.playerBurnout < 0 
-                    ? Math.round(consequences.playerBurnout * 0.6) // 40% reduction for relief
+                    ? Math.round(consequences.playerBurnout * reliefEffectiveness) // 60% effectiveness for relief
                     : consequences.playerBurnout; // Keep increases as-is
                 window.adjustBurnout(
                     player.id,

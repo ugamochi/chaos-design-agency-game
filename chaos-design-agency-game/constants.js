@@ -42,6 +42,9 @@ const GameConstants = {
     BURNOUT_WARNING_THRESHOLD: 80,
     BURNOUT_CHOICE_BLOCK_THRESHOLD: 60,
     BURNOUT_POOR_DECISION_THRESHOLD: 90,
+    // BUG FIX #6: Add burnout rate constants
+    BURNOUT_RATE_PER_OVERTIME_HOUR: 0.10, // 10% burnout per hour of overtime
+    BURNOUT_RELIEF_EFFECTIVENESS: 0.60,   // 60% effectiveness for burnout relief (conversations, sick days)
     
     // Project Status
     PROJECT_STATUS: {

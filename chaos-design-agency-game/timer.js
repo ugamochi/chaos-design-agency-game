@@ -130,21 +130,16 @@ const TimerModule = (function() {
         }
 
         // Handle work day boundaries (9 AM to 6 PM)
+        // BUG FIX #3: Check for Friday BEFORE advancing day
         if (window.GameState.currentHour >= 18) {
-            // End of work day - reset to 9:00 AM
-            window.GameState.currentHour = 9;
-            window.GameState.currentMinute = 0;
-            window.GameState.currentDay++;
-            
-            // Check if it's Friday (Day 5) - trigger weekend choice modal
-            if (window.GameState.currentDay === 6) {
-                // It's now Saturday morning - trigger weekend choice
-                // Set back to Friday evening to show the modal properly
-                window.GameState.currentDay = 5;
+            // Check if it's Friday (Day 5) BEFORE advancing to next day
+            if (window.GameState.currentDay === 5) {
+                // Friday evening - show weekend choice modal
+                // Keep time at Friday 6 PM until choice is made
                 window.GameState.currentHour = 18;
                 window.GameState.currentMinute = 0;
                 
-                // Show weekend modal
+                // Show weekend modal (this will pause the timer)
                 if (window.showWeekendChoiceModal) {
                     window.showWeekendChoiceModal();
                 }
@@ -153,6 +148,11 @@ const TimerModule = (function() {
                 window.saveState();
                 return;
             }
+            
+            // End of work day - reset to 9:00 AM next day
+            window.GameState.currentHour = 9;
+            window.GameState.currentMinute = 0;
+            window.GameState.currentDay++;
             
             // Handle week rollover
             if (window.GameState.currentDay > 7) {
@@ -305,7 +305,8 @@ const TimerModule = (function() {
                     
                     // Morale penalty for running out of hours before week ends
                     // This represents feeling overworked/exhausted
-                    if (!member.outOfHoursWarningShown && window.GameState.currentDay < 7) {
+                    // BUG FIX #1: Only apply penalty ONCE when crossing from positive to 0
+                    if (currentHours > 0 && !member.outOfHoursWarningShown && window.GameState.currentDay < 7) {
                         member.outOfHoursWarningShown = true;
                         if (member.morale && typeof member.morale.current === 'number') {
                             const moralePenalty = 5; // Significant penalty
@@ -378,16 +379,11 @@ const TimerModule = (function() {
         }
 
         // Handle day rollover
+        // BUG FIX #3: Check for Friday BEFORE advancing day
         if (window.GameState.currentHour >= 18) {
-            window.GameState.currentHour = 9;
-            window.GameState.currentMinute = 0;
-            window.GameState.currentDay++;
-            
-            // Check if it's Friday (Day 5) - trigger weekend choice modal
-            if (window.GameState.currentDay === 6) {
-                // It's now Saturday morning - trigger weekend choice
-                // Set back to Friday evening to show the modal properly
-                window.GameState.currentDay = 5;
+            // Check if it's Friday (Day 5) BEFORE advancing to next day
+            if (window.GameState.currentDay === 5) {
+                // Friday evening - show weekend choice modal
                 window.GameState.currentHour = 18;
                 window.GameState.currentMinute = 0;
                 
@@ -400,6 +396,10 @@ const TimerModule = (function() {
                 window.saveState();
                 return;
             }
+            
+            window.GameState.currentHour = 9;
+            window.GameState.currentMinute = 0;
+            window.GameState.currentDay++;
             
             if (window.GameState.currentDay > 7) {
                 window.GameState.currentDay = 1;

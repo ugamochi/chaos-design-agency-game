@@ -8,7 +8,7 @@ const GameStateModule = (function() {
     currentDay: 1,
     currentHour: 9, // Start at 9 AM
     money: 8000,
-    teamMorale: 75,
+    teamMorale: 65,
     projects: [],
     team: [],
     conversationQueue: [],
@@ -99,7 +99,7 @@ const GameStateModule = (function() {
     GameState.currentDay = 1;
     GameState.currentHour = 9;
     GameState.money = 8000;
-    GameState.teamMorale = 75;
+    GameState.teamMorale = 65;
     GameState.projects = [];
     GameState.team = [];
     GameState.conversationQueue = [];
@@ -117,8 +117,8 @@ const GameStateModule = (function() {
         deadlinesMissed: 0,
         perfectDeliveries: 0,
         totalSatisfactionPoints: 0,
-        highestMorale: 75,
-        lowestMorale: 75
+        highestMorale: 65,
+        lowestMorale: 65
     };
     GameState.gamePhase = 'tutorial';
     GameState.gameOver = false;
@@ -363,13 +363,16 @@ const GameStateModule = (function() {
 
     /**
      * Calculate overtime burnout (10% per hour - more punishing for urgency)
+     * BUG FIX #6: Use constant from GameConstants
      */
     function calculateOvertimeBurnout(memberId, overtimeHours) {
         const member = GameState.team.find(m => m.id === memberId);
         if (!member || !overtimeHours || overtimeHours <= 0) return 0;
         
-        // Increased from 5% to 10% per hour - overtime is dangerous in a 12-week game
-        const burnoutIncrease = overtimeHours * 0.10; // 10% per hour (was 5%)
+        // BUG FIX #6: Use constant (10% per hour)
+        const C = window.GameConstants || {};
+        const burnoutRate = C.BURNOUT_RATE_PER_OVERTIME_HOUR || 0.10;
+        const burnoutIncrease = overtimeHours * burnoutRate;
         
         return adjustBurnout(
             memberId, 
