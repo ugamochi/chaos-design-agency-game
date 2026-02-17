@@ -21,6 +21,9 @@
             console.log('GAME_BASE_PATH set to:', window.GAME_BASE_PATH, 'isGitHubPages:', isGitHubPages, 'pathname:', pathname, 'hostname:', hostname);
         })();
     </script>
+    <!-- Pixi.js for office visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -131,11 +134,12 @@
             <!-- Office Tab -->
             <div id="officeTab" class="tab-content">
                 <section class="office-visualization-section">
-                    <h2>Office</h2>
-                    <div id="officeVisualization" class="office-visualization">
-                        <svg id="officeSvg" class="office-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
-                            <!-- Office layout elements will be drawn here -->
-                        </svg>
+                    <h2>🏢 Office</h2>
+                    <div id="officeSvg" style="width: 800px; height: 500px; margin: 0 auto; background: #F5F5F5;">
+                        <!-- Pixi.js canvas will be injected here -->
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem; color: #868E96; font-size: 0.85rem;">
+                        <p>💚 Working on project  |  ❤️ Idle  |  🟠 On break  |  🟣 You</p>
                     </div>
                 </section>
             </div>
@@ -288,6 +292,11 @@
                 'conversations.js',
                 'tutorial.js',
                 'animations.js',
+                // Pixi.js renderer modules (load before office-visualization.js)
+                'renderer/animation.js',
+                'renderer/pixiRenderer.js',
+                'renderer/officeScene.js',
+                'renderer/employeeSprites.js',
                 'office-visualization.js',
                 'timer.js',
                 'ui.js',
@@ -295,11 +304,20 @@
             ];
             
             function loadScript(index) {
-                if (index >= scripts.length) return;
+                if (index >= scripts.length) {
+                    // All scripts loaded - initialize the game
+                    console.log('All scripts loaded, initializing game...');
+                    if (window.initGame) {
+                        window.initGame();
+                    } else {
+                        console.error('initGame not found after loading all scripts');
+                    }
+                    return;
+                }
                 
                 const script = scripts[index];
                 const scriptEl = document.createElement('script');
-                scriptEl.src = window.GAME_BASE_PATH + script + '?v=20241205-1600';
+                scriptEl.src = window.GAME_BASE_PATH + script + '?v=20250216-bugfixes';
                 scriptEl.onerror = function() {
                     console.error('Failed to load script:', scriptEl.src);
                     loadScript(index + 1);
